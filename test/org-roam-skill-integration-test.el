@@ -23,7 +23,7 @@
 
   (describe "create-org-roam-note"
     (it "creates a basic note"
-      (let ((file-path (org-roam-skill-create-note "Test Note" '("test" "integration"))))
+      (let ((file-path (org-roam-skill-create-note "Test Note" :tags '("test" "integration"))))
         (expect (file-exists-p file-path) :to-be-truthy)
         (expect (org-roam-skill-test--node-exists-p "Test Note") :to-be-truthy)
         (expect (org-roam-skill-test--count-nodes) :to-equal 1)
@@ -34,13 +34,13 @@
           (expect (string-match-p ":test:integration:" content) :to-be-truthy))))
 
     (it "creates a note with content"
-      (let ((file-path (org-roam-skill-create-note "Test Note" '("test") "Some content here")))
+      (let ((file-path (org-roam-skill-create-note "Test Note" :tags '("test") :content "Some content here")))
         (expect (file-exists-p file-path) :to-be-truthy)
         (let ((content (org-roam-skill-test--get-note-content file-path)))
           (expect content :to-match "Some content here"))))
 
     (it "sanitizes tags with hyphens"
-      (let ((file-path (org-roam-skill-create-note "Test Note" '("my-tag" "another-tag"))))
+      (let ((file-path (org-roam-skill-create-note "Test Note" :tags '("my-tag" "another-tag"))))
         (let ((content (org-roam-skill-test--get-note-content file-path)))
           (expect (string-match-p ":my_tag:another_tag:" content) :to-be-truthy)
           (expect (string-match-p "my-tag" content) :not :to-be-truthy)))))
@@ -49,30 +49,30 @@
 
   (describe "search-notes-by-title"
     (it "finds notes by title"
-      (org-roam-skill-create-note "First Note" '("test"))
-      (org-roam-skill-create-note "Second Note" '("test"))
-      (org-roam-skill-create-note "Another Topic" '("other"))
+      (org-roam-skill-create-note "First Note" :tags '("test"))
+      (org-roam-skill-create-note "Second Note" :tags '("test"))
+      (org-roam-skill-create-note "Another Topic" :tags '("other"))
       (let ((results (org-roam-skill-search-by-title "Note")))
         (expect (length results) :to-equal 2))))
 
   (describe "search-notes-by-tag"
     (it "finds notes by tag"
-      (org-roam-skill-create-note "Note 1" '("test" "project"))
-      (org-roam-skill-create-note "Note 2" '("test"))
-      (org-roam-skill-create-note "Note 3" '("other"))
+      (org-roam-skill-create-note "Note 1" :tags '("test" "project"))
+      (org-roam-skill-create-note "Note 2" :tags '("test"))
+      (org-roam-skill-create-note "Note 3" :tags '("other"))
       (let ((results (org-roam-skill-search-by-tag "test")))
         (expect (length results) :to-equal 2))))
 
   (describe "get-node-by-title"
     (it "retrieves node by exact title"
-      (org-roam-skill-create-note "Exact Match" '("test"))
+      (org-roam-skill-create-note "Exact Match" :tags '("test"))
       (let ((node (org-roam-skill-get-node-by-title "Exact Match")))
         (expect node :not :to-be nil)
         (expect (plist-get node :title) :to-equal "Exact Match"))))
 
   (describe "search for nonexistent note"
     (it "returns empty results"
-      (org-roam-skill-create-note "Existing Note" '("test"))
+      (org-roam-skill-create-note "Existing Note" :tags '("test"))
       (let ((results (org-roam-skill-search-by-title "Nonexistent")))
         (expect results :to-equal nil))))
 
@@ -80,8 +80,8 @@
 
   (describe "create-bidirectional-link"
     (it "creates links between notes"
-      (org-roam-skill-create-note "Source Note" '("test"))
-      (org-roam-skill-create-note "Target Note" '("test"))
+      (org-roam-skill-create-note "Source Note" :tags '("test"))
+      (org-roam-skill-create-note "Target Note" :tags '("test"))
       (org-roam-skill-create-bidirectional-link "Source Note" "Target Note")
       ;; Sync database to register the link
       (org-roam-db-sync)
@@ -90,8 +90,8 @@
 
   (describe "get-forward-links"
     (it "retrieves forward links"
-      (org-roam-skill-create-note "Source" '("test"))
-      (org-roam-skill-create-note "Target" '("test"))
+      (org-roam-skill-create-note "Source" :tags '("test"))
+      (org-roam-skill-create-note "Target" :tags '("test"))
       (org-roam-skill-create-bidirectional-link "Source" "Target")
       (let ((links (org-roam-skill-get-forward-links-by-title "Source")))
         (expect links :not :to-be nil))))
@@ -105,31 +105,31 @@
 
   (describe "list-all-tags"
     (it "lists all unique tags"
-      (org-roam-skill-create-note "Note 1" '("tag1" "tag2"))
-      (org-roam-skill-create-note "Note 2" '("tag2" "tag3"))
+      (org-roam-skill-create-note "Note 1" :tags '("tag1" "tag2"))
+      (org-roam-skill-create-note "Note 2" :tags '("tag2" "tag3"))
       (let ((tags (org-roam-skill-list-all-tags)))
         (expect (>= (length tags) 3) :to-be-truthy))))
 
   (describe "count-notes-by-tag"
     (it "counts notes with specific tag"
-      (org-roam-skill-create-note "Note 1" '("test"))
-      (org-roam-skill-create-note "Note 2" '("test" "other"))
-      (org-roam-skill-create-note "Note 3" '("other"))
+      (org-roam-skill-create-note "Note 1" :tags '("test"))
+      (org-roam-skill-create-note "Note 2" :tags '("test" "other"))
+      (org-roam-skill-create-note "Note 3" :tags '("other"))
       (let ((counts (org-roam-skill-count-notes-by-tag)))
         (expect (assoc "test" counts) :not :to-be nil)
         (expect (cdr (assoc "test" counts)) :to-equal 2))))
 
   (describe "add-tag-to-note"
     (it "adds tag to existing note"
-      (let ((file-path (org-roam-skill-create-note "Test Note" '("initial"))))
+      (let ((file-path (org-roam-skill-create-note "Test Note" :tags '("initial"))))
         (org-roam-skill-add-tag "Test Note" "added")
         (let ((content (org-roam-skill-test--get-note-content file-path)))
           (expect content :to-match ":added:")))))
 
   (describe "get-notes-without-tags"
     (it "finds untagged notes"
-      (org-roam-skill-create-note "Tagged Note" '("tag"))
-      (org-roam-skill-create-note "Untagged Note" nil)
+      (org-roam-skill-create-note "Tagged Note" :tags '("tag"))
+      (org-roam-skill-create-note "Untagged Note")
       (let ((results (org-roam-skill-get-notes-without-tags)))
         (expect (length results) :to-equal 1))))
 
@@ -137,25 +137,25 @@
 
   (describe "find-orphan-notes"
     (it "finds notes without links"
-      (org-roam-skill-create-note "Connected" '("test"))
-      (org-roam-skill-create-note "Orphan" '("test"))
-      (org-roam-skill-create-note "Another Connected" '("test"))
+      (org-roam-skill-create-note "Connected" :tags '("test"))
+      (org-roam-skill-create-note "Orphan" :tags '("test"))
+      (org-roam-skill-create-note "Another Connected" :tags '("test"))
       (org-roam-skill-create-bidirectional-link "Connected" "Another Connected")
       (let ((orphans (org-roam-skill-find-orphan-notes)))
         (expect (>= (length orphans) 1) :to-be-truthy))))
 
   (describe "list-recent-notes"
     (it "lists recently created notes"
-      (org-roam-skill-create-note "Note 1" '("test"))
-      (org-roam-skill-create-note "Note 2" '("test"))
-      (org-roam-skill-create-note "Note 3" '("test"))
+      (org-roam-skill-create-note "Note 1" :tags '("test"))
+      (org-roam-skill-create-note "Note 2" :tags '("test"))
+      (org-roam-skill-create-note "Note 3" :tags '("test"))
       (let ((recent (org-roam-skill-list-recent-notes 2)))
         (expect (length recent) :to-equal 2))))
 
   (describe "get-graph-stats"
     (it "returns graph statistics"
-      (org-roam-skill-create-note "Note 1" '("test"))
-      (org-roam-skill-create-note "Note 2" '("test"))
+      (org-roam-skill-create-note "Note 1" :tags '("test"))
+      (org-roam-skill-create-note "Note 2" :tags '("test"))
       (org-roam-skill-create-bidirectional-link "Note 1" "Note 2")
       (let ((stats (org-roam-skill-get-graph-stats)))
         (expect stats :not :to-be nil)

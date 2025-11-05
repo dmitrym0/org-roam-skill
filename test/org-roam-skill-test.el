@@ -244,7 +244,129 @@
         (when (file-exists-p test-file)
           (delete-file test-file))))))
 
+(describe "org-roam-skill--read-content-file"
+  (it "reads content from existing file"
+    (let ((test-file (make-temp-file "org-roam-test-" nil ".org")))
+      (unwind-protect
+          (progn
+            (with-temp-file test-file
+              (insert "Test content from file"))
+            (expect (org-roam-skill--read-content-file test-file)
+                    :to-equal "Test content from file"))
+        (when (file-exists-p test-file)
+          (delete-file test-file)))))
+
+  (it "signals error for non-existent file"
+    (expect (org-roam-skill--read-content-file "/nonexistent/file.org")
+            :to-throw 'error))
+
+  (it "handles files with special characters"
+    (let ((test-file (make-temp-file "org-roam-test-" nil ".org")))
+      (unwind-protect
+          (progn
+            (with-temp-file test-file
+              (insert "Content with \"quotes\" and 'apostrophes' and $special chars"))
+            (expect (org-roam-skill--read-content-file test-file)
+                    :to-match "quotes"))
+        (when (file-exists-p test-file)
+          (delete-file test-file)))))
+
+  (it "handles large files"
+    (let ((test-file (make-temp-file "org-roam-test-" nil ".org")))
+      (unwind-protect
+          (progn
+            (with-temp-file test-file
+              (dotimes (i 1000)
+                (insert (format "Line %d with content\n" i))))
+            (let ((content (org-roam-skill--read-content-file test-file)))
+              (expect (length content) :to-be-greater-than 10000)
+              (expect content :to-match "Line 999")))
+        (when (file-exists-p test-file)
+          (delete-file test-file))))))
+
 (describe "org-roam-skill-create-note"
+  (it "creates notes with inline content using :content parameter"
+    (let* ((org-roam-directory (make-temp-file "org-roam-test-" t))
+           (org-roam-db-location (expand-file-name "org-roam.db" org-roam-directory))
+           (org-roam-capture-templates
+            '(("d" "default" plain "%?"
+               :target (file+head "%<%Y%m%d%H%M%S>.org" "#+TITLE: ${title}")
+               :unnarrowed t))))
+      (unwind-protect
+          (progn
+            (org-roam-db-sync)
+            (let ((file-path (org-roam-skill-create-note "Test Note"
+                                                          :tags '("test" "example")
+                                                          :content "Test content")))
+              (expect (file-exists-p file-path) :to-be t)
+              (with-temp-buffer
+                (insert-file-contents file-path)
+                (let ((content (buffer-string)))
+                  (expect (string-match-p "Test content" content) :to-be-truthy)
+                  (expect (string-match-p "#\\+\\(?:TITLE\\|title\\):" content) :to-be-truthy)
+                  (expect (string-match-p "#\\+\\(?:FILETAGS\\|filetags\\):" content) :to-be-truthy)
+                  (expect (string-match-p ":PROPERTIES:" content) :to-be-truthy)
+                  (expect (string-match-p ":ID:" content) :to-be-truthy)
+                  (expect (string-match-p ":END:" content) :to-be-truthy)))))
+        (when (file-exists-p org-roam-directory)
+          (delete-directory org-roam-directory t)))))
+
+  (it "creates notes with content from file using :content-file parameter"
+    (let* ((org-roam-directory (make-temp-file "org-roam-test-" t))
+           (org-roam-db-location (expand-file-name "org-roam.db" org-roam-directory))
+           (org-roam-capture-templates
+            '(("d" "default" plain "%?"
+               :target (file+head "%<%Y%m%d%H%M%S>.org" "#+TITLE: ${title}")
+               :unnarrowed t)))
+           (content-file (make-temp-file "org-roam-content-" nil ".org")))
+      (unwind-protect
+          (progn
+            (with-temp-file content-file
+              (insert "# Content from File\n\nThis is test content loaded from a temporary file."))
+            (org-roam-db-sync)
+            (let ((file-path (org-roam-skill-create-note "Test Note From File"
+                                                          :tags '("test" "file")
+                                                          :content-file content-file)))
+              (expect (file-exists-p file-path) :to-be t)
+              (with-temp-buffer
+                (insert-file-contents file-path)
+                (let ((content (buffer-string)))
+                  (expect (string-match-p "Content from File" content) :to-be-truthy)
+                  (expect (string-match-p "test content loaded from" content) :to-be-truthy)
+                  (expect (string-match-p "#\\+\\(?:TITLE\\|title\\):" content) :to-be-truthy)
+                  (expect (string-match-p ":test:file:" content) :to-be-truthy)))))
+        (when (file-exists-p content-file)
+          (delete-file content-file))
+        (when (file-exists-p org-roam-directory)
+          (delete-directory org-roam-directory t)))))
+
+  (it "prioritizes :content-file over :content when both provided"
+    (let* ((org-roam-directory (make-temp-file "org-roam-test-" t))
+           (org-roam-db-location (expand-file-name "org-roam.db" org-roam-directory))
+           (org-roam-capture-templates
+            '(("d" "default" plain "%?"
+               :target (file+head "%<%Y%m%d%H%M%S>.org" "#+TITLE: ${title}")
+               :unnarrowed t)))
+           (content-file (make-temp-file "org-roam-content-" nil ".org")))
+      (unwind-protect
+          (progn
+            (with-temp-file content-file
+              (insert "Content from file should win"))
+            (org-roam-db-sync)
+            (let ((file-path (org-roam-skill-create-note "Priority Test"
+                                                          :content "Inline content"
+                                                          :content-file content-file)))
+              (expect (file-exists-p file-path) :to-be t)
+              (with-temp-buffer
+                (insert-file-contents file-path)
+                (let ((content (buffer-string)))
+                  (expect content :to-match "Content from file should win")
+                  (expect content :not :to-match "Inline content")))))
+        (when (file-exists-p content-file)
+          (delete-file content-file))
+        (when (file-exists-p org-roam-directory)
+          (delete-directory org-roam-directory t)))))
+
   (it "creates notes with uppercase keywords"
     (let* ((org-roam-directory (make-temp-file "org-roam-test-" t))
            (org-roam-db-location (expand-file-name "org-roam.db" org-roam-directory))
@@ -255,7 +377,9 @@
       (unwind-protect
           (progn
             (org-roam-db-sync)
-            (let ((file-path (org-roam-skill-create-note "Test Note" '("test" "example") "Test content")))
+            (let ((file-path (org-roam-skill-create-note "Test Note"
+                                                          :tags '("test" "example")
+                                                          :content "Test content")))
               (expect (file-exists-p file-path) :to-be t)
               (with-temp-buffer
                 (insert-file-contents file-path)

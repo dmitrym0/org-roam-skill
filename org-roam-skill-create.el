@@ -10,15 +10,23 @@
 
 ;;; Code:
 
+(require 'cl-lib)
 (require 'org-roam)
 (require 'org-id)
 (require 'org-roam-skill-core)
 
 ;;;###autoload
-(defun org-roam-skill-create-note (title &optional tags content no-format)
+(cl-defun org-roam-skill-create-note (title &key tags content content-file no-format)
   "Create a new org-roam note with TITLE, optional TAGS and CONTENT.
 Automatically detect filename format and head content from capture templates.
 Work with any org-roam configuration - no customization required.
+
+CONTENT can be provided in two ways:
+- :content STRING - content as a string (for small/simple content)
+- :content-file PATH - path to file containing content (recommended for large content)
+
+If both are provided, :content-file takes priority.
+The caller is responsible for deleting the content file after this function returns.
 
 CONTENT is automatically formatted to org-mode syntax using pandoc unless:
 - NO-FORMAT is non-nil, or
@@ -31,9 +39,14 @@ Return the file path of the created note."
          (file-path (expand-file-name file-name org-roam-directory))
          (node-id (org-id-uuid))
          (head-content (org-roam-skill--get-head-content))
+         ;; Read content from file if provided, otherwise use content parameter
+         (actual-content (cond
+                          (content-file (org-roam-skill--read-content-file content-file))
+                          (content content)
+                          (t nil)))
          ;; Format content using pandoc (handles markdown/org input)
-         (formatted-content (when content
-                              (org-roam-skill--format-content content no-format))))
+         (formatted-content (when actual-content
+                              (org-roam-skill--format-content actual-content no-format))))
 
     ;; Create the file with proper org-roam structure
     (with-temp-file file-path
@@ -84,7 +97,7 @@ Return the file path of the created note."
   "Create a new org-roam note with TITLE, CONTENT and optional TAGS.
 This is an alias for org-roam-skill-create-note with different arg order.
 Return the file path of the created note."
-  (org-roam-skill-create-note title tags content))
+  (org-roam-skill-create-note title :content content :tags tags))
 
 (provide 'org-roam-skill-create)
 ;;; org-roam-skill-create.el ends here

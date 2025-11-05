@@ -55,13 +55,14 @@ If not loaded, ask user to add to their Emacs config (see installation instructi
 
 **Most common operations** (all functions are already in memory with `org-roam-skill-` prefix):
 - Verify setup: `emacsclient --eval "(org-roam-doctor)"`
-- Create note: `emacsclient --eval "(org-roam-skill-create-note \"Title\" '(\"tag\") \"content\")"` (note: tags must be a list)
+- Create note: `emacsclient --eval "(org-roam-skill-create-note \"Title\" :tags '(\"tag\") :content \"content\")"` (note: tags must be a list)
+- Create with file: `emacsclient --eval "(org-roam-skill-create-note \"Title\" :content-file \"/tmp/content.org\")"` (for large content)
 - Search notes: `emacsclient --eval "(org-roam-skill-search-by-title \"search-term\")"`
 - Find backlinks: `emacsclient --eval "(org-roam-skill-get-backlinks-by-title \"Note Title\")"`
 - Add links: `emacsclient --eval "(org-roam-skill-create-bidirectional-link \"Note A\" \"Note B\")"`
 - Attach files: `emacsclient --eval "(org-roam-skill-attach-file \"Note Title\" \"/path/to/file\")"`
 
-**CRITICAL**: When calling `org-roam-skill-create-note`, the `tags` parameter MUST be a list like `'("tag1" "tag2")`, NOT a string like `"tag1"`.
+**CRITICAL**: When calling `org-roam-skill-create-note`, the `:tags` parameter MUST be a list like `'("tag1" "tag2")`, NOT a string like `"tag1"`.
 
 **Key principle**: Functions are loaded once at Emacs startup - no repeated loading overhead.
 
@@ -222,18 +223,54 @@ emacsclient --eval "(org-roam-db-sync)"
 Use the `org-roam-skill-create-note` function (auto-detects user's template):
 
 ```bash
-emacsclient --eval "(org-roam-skill-create-note \"Note Title\" '(\"tag1\" \"tag2\") \"Optional content here\")"
+# Basic usage with inline content
+emacsclient --eval "(org-roam-skill-create-note \"Note Title\" :tags '(\"tag1\" \"tag2\") :content \"Optional content here\")"
+
+# Using temp file for large content (recommended)
+TEMP=$(mktemp /tmp/org-roam-content-XXXXXX.org)
+echo "Large content..." > "$TEMP"
+emacsclient --eval "(org-roam-skill-create-note \"Note Title\" :tags '(\"tag1\" \"tag2\") :content-file \"$TEMP\")"
+rm "$TEMP"
 ```
 
-**Function signature**: `(org-roam-skill-create-note TITLE &optional TAGS CONTENT NO-FORMAT)`
+**Function signature**: `(org-roam-skill-create-note TITLE &key tags content content-file no-format)`
 
 **Parameters:**
 - `TITLE` (string, required): The note title
-- `TAGS` (list of strings, optional): Tags as a quoted list like `'("tag1" "tag2")` - **NOT a single string**
-- `CONTENT` (string, optional): Initial content for the note
-- `NO-FORMAT` (boolean, optional): If `t`, skip content formatting
+- `:tags` (list of strings, optional): Tags as a quoted list like `'("tag1" "tag2")` - **NOT a single string**
+- `:content` (string, optional): Initial content for the note (for small/simple content)
+- `:content-file` (string, optional): Path to file containing content (recommended for large content)
+- `:no-format` (boolean, optional): If `t`, skip content formatting
 
-**Common mistakes:**
+**Content Methods:**
+
+Use `:content` for small, simple content:
+```bash
+emacsclient --eval "(org-roam-skill-create-note \"Quick Note\" :content \"Brief text\")"
+```
+
+Use `:content-file` for large content, complex formatting, or special characters:
+```bash
+# Create temp file with content
+TEMP=$(mktemp /tmp/org-roam-content-XXXXXX.org)
+cat > "$TEMP" << 'EOF'
+# Large Document
+
+Multiple paragraphs with complex formatting...
+EOF
+
+# Pass file path to emacsclient
+emacsclient --eval "(org-roam-skill-create-note \"Large Note\" :content-file \"$TEMP\")"
+
+# Clean up temp file
+rm "$TEMP"
+```
+
+**When to use each method:**
+- Use `:content` for: short text, simple one-liners, no shell escaping issues
+- Use `:content-file` for: large content (>1KB), complex formatting, special characters, avoiding shell argument limits
+
+**Common tag mistakes:**
 - ❌ Wrong: `"planning"` (string)
 - ✅ Correct: `'("planning")` (list with one element)
 - ❌ Wrong: `'planning` (unquoted symbol)
@@ -251,26 +288,26 @@ Format detection uses these heuristics:
 - Defaults to markdown: `# Heading`, plain text, or no clear signals
 
 **To disable formatting**, use either:
-1. Pass `t` as the `NO-FORMAT` parameter: `(org-roam-skill-create-note "Title" nil "content" t)`
-2. Prefix content with `NO_FORMAT:`: `(org-roam-skill-create-note "Title" nil "NO_FORMAT:raw content")`
+1. Pass `:no-format t`: `(org-roam-skill-create-note "Title" :content "content" :no-format t)`
+2. Prefix content with `NO_FORMAT:`: `(org-roam-skill-create-note "Title" :content "NO_FORMAT:raw content")`
 
 **Examples:**
 
 Markdown content (auto-converted):
 ```bash
-emacsclient --eval "(org-roam-skill-create-note \"My Note\" '(\"project\") \"# Introduction\n\nSome **bold** text.\")"
+emacsclient --eval "(org-roam-skill-create-note \"My Note\" :tags '(\"project\") :content \"# Introduction\n\nSome **bold** text.\")"
 # Creates: * Introduction\n\nSome *bold* text.
 ```
 
 Org content (normalized):
 ```bash
-emacsclient --eval "(org-roam-skill-create-note \"My Note\" nil \"* Section\n\nContent here.\")"
+emacsclient --eval "(org-roam-skill-create-note \"My Note\" :content \"* Section\n\nContent here.\")"
 # Validates and cleans org syntax
 ```
 
 Skip formatting:
 ```bash
-emacsclient --eval "(org-roam-skill-create-note \"My Note\" nil \"Raw text\" t)"
+emacsclient --eval "(org-roam-skill-create-note \"My Note\" :content \"Raw text\" :no-format t)"
 # Inserts exactly: Raw text
 ```
 
@@ -488,7 +525,7 @@ When user says: "Create a note about React Hooks and link it to my React note"
 
 2. Create new note "React Hooks" with tags:
    ```bash
-   emacsclient --eval "(org-roam-skill-create-note \"React Hooks\" '(\"javascript\" \"react\"))"
+   emacsclient --eval "(org-roam-skill-create-note \"React Hooks\" :tags '(\"javascript\" \"react\"))"
    ```
 
 3. Insert bidirectional links between the notes:
