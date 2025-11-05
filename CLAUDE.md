@@ -97,15 +97,102 @@ emacsclient --eval "(org-roam-doctor-quick)"
 
 Returns `t` if OK, `nil` otherwise.
 
+## Testing
+
+This project uses [Buttercup](https://github.com/jorgenschaefer/emacs-buttercup) for testing and [Eldev](https://github.com/doublep/eldev) for test execution and dependency management.
+
+### Writing Tests for New Code
+
+**IMPORTANT**: All new functions and significant code changes must include tests.
+
+**Test file structure:**
+- Unit tests: `test/org-roam-skill-test.el`
+- Integration tests: `test/org-roam-skill-integration-test.el`
+- Test helpers: `test/test-helper.el`
+
+**Test patterns to follow:**
+
+```elisp
+(describe "function-name"
+  (it "describes what the test does"
+    (expect (function-call args) :to-equal expected-result))
+
+  (it "handles edge case"
+    (expect (function-call edge-case) :to-match "pattern")))
+```
+
+**Common test matchers:**
+- `:to-equal` - exact equality
+- `:to-match` - regex matching
+- `:to-be` - identity comparison (use for `t`/`nil`)
+- `:to-be-truthy` / `:to-be-falsy` - boolean checks
+- `:not :to-be` - negation
+
+**Testing file operations:**
+- Use `make-temp-file` for temporary files/directories
+- Always clean up in `unwind-protect`
+- Example:
+  ```elisp
+  (let ((temp-file (make-temp-file "test-" nil ".org")))
+    (unwind-protect
+        (progn
+          ;; Test code using temp-file
+          (expect (file-exists-p temp-file) :to-be t))
+      (when (file-exists-p temp-file)
+        (delete-file temp-file))))
+  ```
+
+**When to write tests:**
+- New functions (especially public API functions)
+- Bug fixes (add regression test)
+- Edge cases and error handling
+- Helper functions in `org-roam-skill-core.el`
+
+### Running Tests
+
+**Quick test run:**
+```bash
+make test
+```
+
+**Run with verbose output:**
+```bash
+eldev -C --unstable test
+```
+
+**Run specific test file:**
+```bash
+eldev -C --unstable test test/org-roam-skill-test.el
+```
+
+**Run tests matching pattern:**
+```bash
+eldev -C --unstable test --pattern "sanitize"
+```
+
+**Other useful commands:**
+```bash
+make prepare  # Install dependencies
+make lint     # Run linting checks
+make clean    # Remove compiled files and cache
+```
+
+**Before committing:**
+1. Run `make test` to ensure all tests pass
+2. Run `make lint` to check code style
+3. Add tests for any new functionality
+4. Update tests if changing existing behavior
+
 ## Git Workflow
 
 **IMPORTANT**: All changes to this codebase must follow a branch-based workflow:
 
 1. **Create a feature branch** for your changes (never commit directly to `master`)
 2. **Make changes** and commit to the feature branch with proper attribution
-3. **Push the branch** to the remote repository
-4. **Create a pull request** for review
-5. **Wait for PR approval** before merging to `master`
+3. **Add tests** for new functionality (run `make test` before committing)
+4. **Push the branch** to the remote repository
+5. **Create a pull request** for review
+6. **Wait for PR approval** before merging to `master`
 
 This project requires PR approval before merging to the default branch.
 

@@ -32,6 +32,18 @@ Returns the result of calling FUNCTION."
       (when (file-exists-p temp-file)
         (delete-file temp-file)))))
 
+(defun org-roam-skill--read-content-file (file-path)
+  "Read and return content from FILE-PATH.
+Returns the file contents as a string, or signals an error if the file
+cannot be read. The caller is responsible for deleting the file after use."
+  (unless (file-exists-p file-path)
+    (error "Content file does not exist: %s" file-path))
+  (unless (file-readable-p file-path)
+    (error "Content file is not readable: %s" file-path))
+  (with-temp-buffer
+    (insert-file-contents file-path)
+    (buffer-string)))
+
 (defun org-roam-skill--validate-org-syntax (file-path)
   "Validate org-mode syntax in FILE-PATH.
 Returns a plist with validation results:
