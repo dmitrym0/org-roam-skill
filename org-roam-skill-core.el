@@ -32,6 +32,15 @@ Returns the result of calling FUNCTION."
       (when (file-exists-p temp-file)
         (delete-file temp-file)))))
 
+(defun org-roam-skill--looks-like-temp-file (path)
+  "Return non-nil if PATH appears to be a temporary file.
+Checks for common temp directory patterns to prevent accidental deletion
+of important files. Returns nil if PATH is not a string."
+  (and (stringp path)
+       (or (string-prefix-p "/tmp/" path)
+           (string-prefix-p "/var/tmp/" path)
+           (string-prefix-p (temporary-file-directory) path))))
+
 (defun org-roam-skill--read-content-file (file-path)
   "Read and return content from FILE-PATH.
 Returns the file contents as a string, or signals an error if the file

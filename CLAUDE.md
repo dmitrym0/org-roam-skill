@@ -35,6 +35,14 @@ Users must load `org-roam-skill` in their Emacs config (see `agent_docs/setup.md
 - Full check: `emacsclient --eval "(org-roam-doctor)"`
 - Quick check: `emacsclient --eval "(org-roam-doctor-quick)"`
 
+**Temp file handling:**
+- External `:content-file` parameters are automatically deleted after processing
+- Only deletes files in temp directories (`/tmp/`, `/var/tmp/`, and `temporary-file-directory`)
+- Use `:keep-file t` to prevent deletion (useful for debugging)
+- Internal temp files (in elisp) use `make-temp-file` + `unwind-protect` for guaranteed cleanup
+- Implementation: `org-roam-skill-create.el:55-110` (unwind-protect cleanup logic)
+- Validation function: `org-roam-skill--looks-like-temp-file` in `org-roam-skill-core.el:35-42`
+
 For detailed implementation patterns, see `agent_docs/implementation.md`.
 
 ## Testing & Development
