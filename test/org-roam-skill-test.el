@@ -426,5 +426,95 @@
         (when (file-exists-p org-roam-directory)
           (delete-directory org-roam-directory t))))))
 
+;;; Temp File Cleanup Tests
+
+(describe "org-roam-skill--looks-like-temp-file"
+  (it "returns t for /tmp/ paths"
+    (expect (org-roam-skill--looks-like-temp-file "/tmp/test.org") :to-be-truthy))
+
+  (it "returns t for /var/tmp/ paths"
+    (expect (org-roam-skill--looks-like-temp-file "/var/tmp/test.org") :to-be-truthy))
+
+  (it "returns nil for home directory paths"
+    (expect (org-roam-skill--looks-like-temp-file "~/test.org") :not :to-be-truthy))
+
+  (it "returns nil for absolute home directory paths"
+    (expect (org-roam-skill--looks-like-temp-file (expand-file-name "~/test.org")) :not :to-be-truthy))
+
+  (it "returns nil for non-strings"
+    (expect (org-roam-skill--looks-like-temp-file nil) :not :to-be-truthy)
+    (expect (org-roam-skill--looks-like-temp-file 123) :not :to-be-truthy)))
+
+(describe "org-roam-skill-create-note with temp file cleanup"
+  (it "automatically deletes temp file after note creation"
+    (let* ((org-roam-directory (make-temp-file "org-roam-test-" t))
+           (org-roam-db-location (expand-file-name "org-roam.db" org-roam-directory))
+           (temp-file (make-temp-file "org-roam-test-" nil ".org")))
+      (unwind-protect
+          (progn
+            (with-temp-file temp-file
+              (insert "Test content"))
+            (org-roam-db-sync)
+            (let ((file-path (org-roam-skill-create-note "Temp File Test"
+                                                         :content-file temp-file)))
+              (expect (file-exists-p file-path) :to-be t)
+              ;; Temp file should be auto-deleted
+              (expect (file-exists-p temp-file) :not :to-be-truthy)))
+        (when (file-exists-p org-roam-directory)
+          (delete-directory org-roam-directory t)))))
+
+  (it "preserves temp file when :keep-file is t"
+    (let* ((org-roam-directory (make-temp-file "org-roam-test-" t))
+           (org-roam-db-location (expand-file-name "org-roam.db" org-roam-directory))
+           (temp-file (make-temp-file "org-roam-test-" nil ".org")))
+      (unwind-protect
+          (progn
+            (with-temp-file temp-file
+              (insert "Test content"))
+            (org-roam-db-sync)
+            (let ((file-path (org-roam-skill-create-note "Keep File Test"
+                                                         :content-file temp-file
+                                                         :keep-file t)))
+              (expect (file-exists-p file-path) :to-be t)
+              ;; Temp file should NOT be deleted when :keep-file is t
+              (expect (file-exists-p temp-file) :to-be t)))
+        (when (file-exists-p temp-file)
+          (delete-file temp-file))
+        (when (file-exists-p org-roam-directory)
+          (delete-directory org-roam-directory t)))))
+
+  (it "handles already-deleted files gracefully"
+    (let* ((org-roam-directory (make-temp-file "org-roam-test-" t))
+           (org-roam-db-location (expand-file-name "org-roam.db" org-roam-directory)))
+      (unwind-protect
+          (progn
+            (org-roam-db-sync)
+            ;; Should not throw when file doesn't exist
+            (expect (org-roam-skill-create-note "Already Deleted Test"
+                                               :content "Direct content")
+                    :not :to-throw))
+        (when (file-exists-p org-roam-directory)
+          (delete-directory org-roam-directory t)))))
+
+  (it "cleans up temp file even if note creation fails"
+    (let* ((org-roam-directory (make-temp-file "org-roam-test-" t))
+           (org-roam-db-location (expand-file-name "org-roam.db" org-roam-directory))
+           (temp-file (make-temp-file "org-roam-test-" nil ".org")))
+      (unwind-protect
+          (progn
+            (with-temp-file temp-file
+              (insert "Test content"))
+            (org-roam-db-sync)
+            ;; Simulate failure by using invalid org-roam-capture-templates
+            (let ((org-roam-capture-templates nil))
+              ;; This should fail, but cleanup should still happen
+              (condition-case nil
+                  (org-roam-skill-create-note "Failure Test" :content-file temp-file)
+                (error nil)))
+            ;; Even though note creation failed, temp file should be cleaned up
+            (expect (file-exists-p temp-file) :not :to-be-truthy))
+        (when (file-exists-p org-roam-directory)
+          (delete-directory org-roam-directory t))))))
+
 (provide 'org-roam-skill-test)
 ;;; org-roam-skill-test.el ends here

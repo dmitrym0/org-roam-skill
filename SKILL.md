@@ -227,19 +227,20 @@ Use the `org-roam-skill-create-note` function (auto-detects user's template):
 emacsclient --eval "(org-roam-skill-create-note \"Note Title\" :tags '(\"tag1\" \"tag2\") :content \"Optional content here\")"
 
 # Using temp file for large content (recommended)
-TEMP=$(mktemp /tmp/org-roam-content-XXXXXX.org)
+TEMP=$(mktemp -t org-roam-content.XXXXXX)
 echo "Large content..." > "$TEMP"
 emacsclient --eval "(org-roam-skill-create-note \"Note Title\" :tags '(\"tag1\" \"tag2\") :content-file \"$TEMP\")"
-rm "$TEMP"
+# Temp file is automatically deleted!
 ```
 
-**Function signature**: `(org-roam-skill-create-note TITLE &key tags content content-file no-format)`
+**Function signature**: `(org-roam-skill-create-note TITLE &key tags content content-file keep-file no-format)`
 
 **Parameters:**
 - `TITLE` (string, required): The note title
 - `:tags` (list of strings, optional): Tags as a quoted list like `'("tag1" "tag2")` - **NOT a single string**
 - `:content` (string, optional): Initial content for the note (for small/simple content)
-- `:content-file` (string, optional): Path to file containing content (recommended for large content)
+- `:content-file` (string, optional): Path to file containing content (recommended for large content). **File is automatically deleted after processing unless `:keep-file` is specified.**
+- `:keep-file` (boolean, optional): If `t`, prevent automatic deletion of `:content-file` (useful for debugging)
 - `:no-format` (boolean, optional): If `t`, skip content formatting
 
 **Content Methods:**
@@ -252,23 +253,35 @@ emacsclient --eval "(org-roam-skill-create-note \"Quick Note\" :content \"Brief 
 Use `:content-file` for large content, complex formatting, or special characters:
 ```bash
 # Create temp file with content
-TEMP=$(mktemp /tmp/org-roam-content-XXXXXX.org)
+TEMP=$(mktemp -t org-roam-content.XXXXXX)
 cat > "$TEMP" << 'EOF'
 # Large Document
 
 Multiple paragraphs with complex formatting...
 EOF
 
-# Pass file path to emacsclient
+# Pass file path to emacsclient (temp file is auto-deleted after processing)
 emacsclient --eval "(org-roam-skill-create-note \"Large Note\" :content-file \"$TEMP\")"
 
-# Clean up temp file
-rm "$TEMP"
+# No cleanup needed - temp file is automatically deleted!
 ```
 
 **When to use each method:**
 - Use `:content` for: short text, simple one-liners, no shell escaping issues
 - Use `:content-file` for: large content (>1KB), complex formatting, special characters, avoiding shell argument limits
+
+**Automatic Temp File Cleanup:**
+
+When using `:content-file`, the temp file is automatically deleted after the note is created. This happens automatically - you don't need to manually `rm` the file.
+
+If you need to keep the temp file for debugging, use `:keep-file t`:
+```bash
+TEMP=$(mktemp -t org-roam-debug.XXXXXX)
+echo "Debug content" > "$TEMP"
+emacsclient --eval "(org-roam-skill-create-note \"Debug\" :content-file \"$TEMP\" :keep-file t)"
+echo "Temp file preserved at: $TEMP"
+rm "$TEMP"  # Manual cleanup required when using :keep-file
+```
 
 **Common tag mistakes:**
 - ❌ Wrong: `"planning"` (string)
