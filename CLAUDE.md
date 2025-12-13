@@ -7,11 +7,18 @@ A Claude Code skill enabling interaction with org-roam note-taking systems throu
 ## Architecture
 
 **Core components:**
-- `SKILL.md` - Main skill instructions with usage examples and function reference
+- `SKILL.md` - Main skill instructions (307 lines, follows skill-creator best practices)
 - `org-roam-skill.el` - Main package loading all modules
 - `org-roam-skill-*.el` - Modular implementations (create, search, links, tags, attach, utils, doctor)
 - `scripts/*.el` - Legacy helper scripts (deprecated, backward compatibility only)
-- `references/` - API documentation for org-roam functions
+- `references/` - Detailed documentation loaded as needed by Claude
+
+**References (progressive disclosure):**
+- `references/functions.md` - Complete function documentation with parameters and examples
+- `references/installation.md` - Setup and configuration guide
+- `references/troubleshooting.md` - Common issues and solutions
+- `references/org-roam-api.md` - Org-roam API reference
+- `references/emacsclient-usage.md` - Detailed emacsclient patterns
 
 **Package loading:**
 Users must load `org-roam-skill` in their Emacs config (see `agent_docs/setup.md` for details). All functions use `org-roam-skill-` prefix except diagnostics (`org-roam-doctor*`).
@@ -75,9 +82,35 @@ See `agent_docs/testing.md` for detailed patterns, test structure, and examples.
 Co-Authored-By: Claude <noreply@anthropic.com>
 ```
 
+## Skill Packaging
+
+**Files included in .skill package:**
+- `SKILL.md` (required)
+- `*.el` files (Emacs Lisp code)
+- `references/` (documentation for AI)
+
+**Files excluded from .skill package** (see `.skillignore`):
+- `README.md` - Developer/user documentation (not needed for AI agent)
+- `CLAUDE.md` - Project-specific development instructions
+- `agent_docs/` - Developer documentation
+- `test/` - Test suite (developer resources)
+- `.git/`, `.github/`, `Makefile`, `Eldev` - Development tools
+
+**Packaging command:**
+```bash
+cd ~/dev/majorgreys && zip -r org-roam-skill.skill org-roam-skill/ -x @org-roam-skill/.skillignore
+```
+
 ## Additional Documentation
 
-- `SKILL.md` - Function reference and usage examples
+**For AI (included in package):**
+- `SKILL.md` - Quick reference and core workflows
+- `references/functions.md` - Complete function documentation
+- `references/installation.md` - Setup guide
+- `references/troubleshooting.md` - Common issues
+
+**For developers (excluded from package):**
+- `README.md` - User-facing documentation
 - `agent_docs/setup.md` - Package loading and Emacs configuration
 - `agent_docs/implementation.md` - Detailed implementation patterns
 - `agent_docs/testing.md` - Testing patterns and examples
