@@ -34,6 +34,33 @@ The skill works with **Claude Code only** (not Claude Desktop, which uses a diff
 
 **The skill auto-loads on first use** - no Emacs configuration needed!
 
+### Dependencies
+
+The skill requires the following Emacs packages:
+
+- `org-roam` (2.0.0 or later)
+- `org-id` (for generating unique IDs)
+- `org-attach` (for file attachments)
+- `cl-lib` (for Common Lisp utilities)
+- `seq` (for sequence operations)
+
+These are standard packages that should be available in most Emacs installations.
+
+### Using use-package (Optional)
+
+If you want to explicitly load the skill in your Emacs configuration, you can use `use-package`:
+
+```elisp
+(use-package org-roam-skill
+  :ensure t
+  :after org-roam
+  :config
+  (setq org-roam-skill-auto-format-content t)
+  (setq org-roam-skill-default-template "template.org"))
+```
+
+This is optional - the skill will auto-load when first used via emacsclient.
+
 ### Optional: Recommended Configuration
 
 For cleaner filenames, you can optionally configure org-roam to use timestamp-only format:
