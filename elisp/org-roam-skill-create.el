@@ -15,6 +15,22 @@
 (require 'org-id)
 (require 'org-roam-skill-core)
 
+;;; Customization
+
+defgroup org-roam-skill nil
+  "Customization group for org-roam-skill."
+  :group 'org-roam)
+
+defcustom org-roam-skill-default-template "template.org"
+  "Default template for new notes."
+  :type 'string
+  :group 'org-roam-skill)
+
+defcustom org-roam-skill-auto-format-content t
+  "Whether to automatically format content using pandoc."
+  :type 'boolean
+  :group 'org-roam-skill)
+
 ;;;###autoload
 (cl-defun org-roam-skill-create-note (title &key tags content content-file keep-file no-format)
   "Create a new org-roam note with TITLE, optional TAGS and CONTENT.
@@ -35,6 +51,7 @@ a temporary file (in /tmp/ or similar directory). To prevent deletion, pass
 CONTENT is automatically formatted to org-mode syntax using pandoc unless:
 - NO-FORMAT is non-nil, or
 - CONTENT starts with 'NO_FORMAT:' prefix
+- org-roam-skill-auto-format-content is nil
 
 This handles both markdown and org-mode input, normalizing to clean org format.
 
@@ -50,7 +67,7 @@ Return the file path of the created note."
                           (t nil)))
          ;; Format content using pandoc (handles markdown/org input)
          (formatted-content (when actual-content
-                              (org-roam-skill--format-content actual-content no-format))))
+                              (org-roam-skill--format-content actual-content (or no-format (not org-roam-skill-auto-format-content))))))
 
     (unwind-protect
         (progn
