@@ -31,9 +31,8 @@ The skill works with **Claude Code only** (not Claude Desktop, which uses a diff
 3. **Emacs daemon running**: Start with `emacs --daemon`
 4. **emacsclient available**: Should be installed with Emacs
 5. **org-roam directory set up**: Your notes directory (e.g., `~/org-roam/` or `~/Documents/org/roam/`)
-6. **org-roam-skill package loaded in your Emacs configuration** (see installation below)
 
-**The skill works with your existing org-roam configuration** - no customization required!
+**The skill auto-loads on first use** - no Emacs configuration needed!
 
 ### Optional: Recommended Configuration
 
@@ -68,11 +67,9 @@ For cleaner filenames, you can optionally configure org-roam to use timestamp-on
 
 ## Installation
 
-### Step 1: Install the Skill for Claude Code
+### Step 1: Install the Skill
 
-This skill can be installed in three different locations depending on your needs:
-
-#### Option 1: Personal Skills (Recommended for individual use)
+#### Option 1: Personal Skills (Recommended)
 
 Install globally for all your Claude Code sessions:
 
@@ -98,51 +95,32 @@ git clone https://github.com/majorgreys/org-roam-skill.git
 
 The skill only activates when working in that project.
 
-#### Option 3: Via Plugins (Advanced)
+### Step 2: Verify Installation
 
-If you're distributing this skill as a plugin, users can install it via the Claude Code plugin system. See the [Agent Skills documentation](https://docs.claude.com/en/docs/agents-and-tools/agent-skills/best-practices) for details.
-
-### Step 2: Load the Package in Emacs
-
-**For Doom Emacs**, add to `~/.doom.d/config.el`:
-
-```elisp
-(use-package! org-roam-skill
-  :load-path "~/.claude/skills/org-roam-skill")
-```
-
-**For vanilla Emacs**, add to `~/.emacs.d/init.el`:
-
-```elisp
-(add-to-list 'load-path (expand-file-name "~/.claude/skills/org-roam-skill"))
-(require 'org-roam-skill)
-```
-
-After adding, **restart Emacs** or evaluate the configuration.
-
-### Step 3: Verify Installation
-
-**Verify Claude Code can see the skill:**
-
-1. Start Claude Code
-2. Ask: "Can you help me with my org-roam notes?"
-3. Claude should recognize the skill and activate it automatically
-
-**Verify the package is loaded in Emacs:**
+**Verify Emacs daemon is running:**
 
 ```bash
-emacsclient --eval "(featurep 'org-roam-skill)"
+emacsclient --eval "t"
 ```
 
-Should return `t`. If it returns `nil`, the package isn't loaded yet.
+Should return `t`. If not, start the daemon:
+```bash
+emacs --daemon
+```
 
 **Run diagnostic to verify org-roam setup:**
 
 ```bash
-emacsclient --eval "(org-roam-doctor)"
+~/.claude/skills/org-roam-skill/scripts/org-roam-eval "(org-roam-doctor)"
 ```
 
-This will check your org-roam configuration, database, and templates.
+This auto-loads the skill package and checks your org-roam configuration, database, and templates.
+
+**How it works:**
+- The skill includes a wrapper script (`scripts/org-roam-eval`) that auto-loads the package on first use
+- No manual Emacs configuration needed
+- Package stays in memory after first call (fast subsequent calls)
+- Always uses the version that ships with the skill
 
 **Note**: Skills are **model-invoked** - they activate automatically based on what you ask. You don't need to run any commands or mention the skill name. Just ask naturally about your notes!
 
@@ -151,24 +129,30 @@ This will check your org-roam configuration, database, and templates.
 ```
 org-roam-skill/
 ├── SKILL.md                          # Main skill instructions
-├── CLAUDE.md                         # Project-specific instructions
+├── CLAUDE.md                         # Developer instructions
 ├── README.md                         # This file
-├── org-roam-skill.el                 # Main entry point (loads all modules)
-├── org-roam-skill-core.el            # Core utilities
-├── org-roam-skill-create.el          # Note creation functions
-├── org-roam-skill-search.el          # Search and query functions
-├── org-roam-skill-links.el           # Link management (backlinks, forward links)
-├── org-roam-skill-tags.el            # Tag management
-├── org-roam-skill-attach.el          # File attachment via org-attach
-├── org-roam-skill-utils.el           # Utility functions (orphans, stats)
-├── org-roam-skill-doctor.el          # Diagnostic functions
+├── elisp/                            # Emacs Lisp package code
+│   ├── org-roam-skill.el             # Main entry point (loads all modules)
+│   ├── org-roam-skill-core.el        # Core utilities
+│   ├── org-roam-skill-create.el      # Note creation functions
+│   ├── org-roam-skill-search.el      # Search and query functions
+│   ├── org-roam-skill-links.el       # Link management (backlinks, forward links)
+│   ├── org-roam-skill-tags.el        # Tag management
+│   ├── org-roam-skill-attach.el      # File attachment via org-attach
+│   ├── org-roam-skill-utils.el       # Utility functions (orphans, stats)
+│   └── org-roam-skill-doctor.el      # Diagnostic functions
+├── scripts/
+│   └── org-roam-eval                 # Auto-load wrapper script
 ├── test/                             # Test suite
 │   ├── org-roam-skill-test.el        # Unit tests
 │   ├── org-roam-skill-integration-test.el  # Integration tests
 │   └── test-helper.el                # Test utilities
-└── references/                       # Documentation
+└── references/                       # AI documentation
+    ├── functions.md                  # Function reference
+    ├── installation.md               # Setup guide
+    ├── troubleshooting.md            # Common issues
     ├── org-roam-api.md               # Org-roam API reference
-    └── emacsclient-usage.md          # How to use emacsclient
+    └── emacsclient-usage.md          # Emacsclient patterns
 ```
 
 ## Quick Start
@@ -203,13 +187,14 @@ Claude Code will automatically load the necessary helper scripts and perform the
 When you ask Claude Code about your notes, the skill:
 
 1. **Automatically activates** based on keywords in your question (org-roam, notes, backlinks, etc.)
-2. **Uses emacsclient** to communicate with your running Emacs daemon
-3. **Calls functions directly** from `org-roam-skill.el` (already loaded in memory)
-4. **Auto-detects your configuration** (filename format, templates, etc.)
-5. **Performs operations** using org-roam's built-in functions
-6. **Returns results** in a readable format
+2. **Uses the wrapper script** (`scripts/org-roam-eval`) to communicate with your running Emacs daemon
+3. **Auto-loads the package** from `elisp/` on first use (stays in memory for subsequent calls)
+4. **Calls functions directly** (already loaded in memory after first call)
+5. **Auto-detects your configuration** (filename format, templates, etc.)
+6. **Performs operations** using org-roam's built-in functions
+7. **Returns results** in a readable format
 
-No manual script loading or command memorization required - just ask naturally! All functions stay in memory after initial Emacs startup, making operations instant.
+No manual configuration or command memorization required - just ask naturally! The auto-load wrapper ensures the package is available, and all functions stay in memory for instant operations.
 
 ## Troubleshooting
 
@@ -249,9 +234,9 @@ curl -fsSL https://raw.github.com/doublep/eldev/master/webinstall/github-eldev |
 
 **Run tests:**
 ```bash
-make prepare  # Install dependencies (first time only)
-make test     # Run all tests
-make lint     # Run linting checks
+eldev -C --unstable prepare  # Install dependencies (first time only)
+eldev -C --unstable test     # Run all tests
+eldev -C --unstable lint     # Run linting checks
 ```
 
 **Prerequisites:**
@@ -263,7 +248,7 @@ make lint     # Run linting checks
 Feel free to extend this skill with additional functionality! When contributing:
 
 1. Add tests for new features
-2. Ensure all tests pass: `make test`
+2. Ensure all tests pass: `eldev -C --unstable test`
 3. Update documentation as needed
 4. Follow existing code style
 

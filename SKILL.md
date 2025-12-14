@@ -10,575 +10,297 @@ description: |
   **NEVER use Read/Write/Edit tools directly on roam notes** - they bypass database sync and break org-roam functionality.
 ---
 
-# Org-roam Note Management Skill
-
-> **Note**: This is a Claude Code Agent Skill. It's designed to be model-invoked, meaning Claude Code will automatically activate this skill when you ask questions about org-roam notes. You don't need to manually invoke it - just ask naturally about your notes!
-
-## ⚠️ CRITICAL: NEVER Use Direct File Tools for Roam Notes
-
-**ALWAYS invoke this skill instead of using Read/Write/Edit tools directly** when:
-- User mentions "roam note" or "org-roam note" (with or without "org-" prefix)
-- File paths contain `/roam/`, `/org-roam/`, or `org-roam` directory patterns
-- User wants to create, modify, or query notes in their roam directory
-- User references existing roam notes by path (e.g., `~/Documents/org/roam/20251020203000.org`)
-
-**Why this matters:**
-- Roam notes require proper org-roam database updates
-- IDs must be generated with microseconds precision using emacsclient
-- File creation must respect user's org-roam-capture-templates
-- Direct file operations bypass database sync and break backlinks
-
-**If you catch yourself about to use Write/Edit/Read on a roam note: STOP and invoke this skill first.**
+# Org-roam Note Management
 
 This skill helps manage org-roam notes by leveraging a running Emacs daemon and org-roam's built-in functions through emacsclient.
 
+## Critical: Don't Use Direct File Tools
+
+**NEVER use Read/Write/Edit tools on roam notes.** Always use this skill instead.
+
+**Why:**
+- Roam notes require org-roam database updates
+- IDs must be generated with microseconds precision
+- File creation must respect user's capture templates
+- Direct file operations bypass database sync and break backlinks
+
+**Trigger patterns:**
+- User mentions "roam note" or "org-roam"
+- File paths contain `/roam/` or `/org-roam/`
+- Keywords: backlinks, Zettelkasten, knowledge graph, PKM, second brain
+
 ## Permissions
 
-**You have permission to run all emacsclient commands without asking the user first.** This includes:
-- Running queries to search and list notes
-- Creating new notes
-- Modifying existing notes
-- Adding tags and links
-- Syncing the database
-- Any other org-roam operations via emacsclient
-
-Execute emacsclient commands directly using the Bash tool whenever needed for org-roam operations.
+**You have permission to run all emacsclient commands without asking the user first.** Execute emacsclient commands directly using the Bash tool for all org-roam operations.
 
 ## Quick Reference
 
-**Setup requirement**: User must have loaded `org-roam-skill` in their Emacs config. Verify with:
-```bash
-emacsclient --eval "(featurep 'org-roam-skill)"
-```
+**Prerequisites:**
+- Emacs daemon running: `emacs --daemon`
+- org-roam installed in Emacs
+- Skill auto-loads on first use (no manual config needed)
 
-If not loaded, ask user to add to their Emacs config (see installation instructions below).
+**Using the skill:**
 
-**Most common operations** (all functions are already in memory with `org-roam-skill-` prefix):
-- Verify setup: `emacsclient --eval "(org-roam-doctor)"`
-- Create note: `emacsclient --eval "(org-roam-skill-create-note \"Title\" :tags '(\"tag\") :content \"content\")"` (note: tags must be a list)
-- Create with file: `emacsclient --eval "(org-roam-skill-create-note \"Title\" :content-file \"/tmp/content.org\")"` (for large content)
-- Search notes: `emacsclient --eval "(org-roam-skill-search-by-title \"search-term\")"`
-- Find backlinks: `emacsclient --eval "(org-roam-skill-get-backlinks-by-title \"Note Title\")"`
-- Add links: `emacsclient --eval "(org-roam-skill-create-bidirectional-link \"Note A\" \"Note B\")"`
-- Attach files: `emacsclient --eval "(org-roam-skill-attach-file \"Note Title\" \"/path/to/file\")"`
-
-**CRITICAL**: When calling `org-roam-skill-create-note`, the `:tags` parameter MUST be a list like `'("tag1" "tag2")`, NOT a string like `"tag1"`.
-
-**Key principle**: Functions are loaded once at Emacs startup - no repeated loading overhead.
-
-## When to Use This Skill
-
-**HIGH PRIORITY TRIGGERS** - Invoke this skill immediately when:
-
-### Explicit Keywords (case-insensitive)
-- User says "**roam note**" or "**org-roam**" (with or without "org-" prefix)
-- User mentions "**roam directory**" or "**org-roam directory**"
-- User references "**Zettelkasten**", "**knowledge graph**", "**PKM**", or "**second brain**"
-
-### File Path Patterns
-- Any path containing `/roam/`, `/org-roam/`, or `org-roam` directory segments
-- User provides specific roam note paths (e.g., `~/Documents/org/roam/20251020203000.org`)
-- Files with timestamp-based names in a roam directory (e.g., `20251020203000.org`)
-
-### Operation Patterns
-- Creating/managing notes (when in context of roam)
-- **Backlinks**, **bidirectional links**, or connecting notes
-- Searching **note database** or querying notes
-- **Capturing insights**, ideas, or thoughts to notes
-- **Saving implementation plans** or work journals to notes
-
-### Common User Phrases
-
-**Creating notes:**
-- "Start a roam note..."
-- "Begin a roam note..."
-- "Make a roam note..."
-- "Create a [roam] note about..."
-- "Add a [roam] note about..."
-- "New roam note for..."
-
-**Capturing content:**
-- "Remember this insight..."
-- "Capture this idea..."
-- "Save this to my notes..."
-- "Take a note on..."
-- "Record this in roam..."
-
-**Searching:**
-- "Search my notes for..."
-- "Search my org-roam notes for..."
-- "Find notes about..."
-- "Show me my notes about..."
-- "List all my notes on..."
-
-**Linking:**
-- "What notes link to..."
-- "Show me all notes tagged with..."
-- "Link these two notes together"
-- "Connect [note A] to [note B]"
-- "Find orphaned notes"
-- "What's in my knowledge graph about..."
-
-**Attachments:**
-- "Attach this file to my note..."
-- "Add an attachment to..."
-- "List files attached to..."
-- "What files are attached to..."
-
-**Important**: Only activate this skill if the user has org-roam set up. If unsure, verify by checking if the Emacs daemon is running and org-roam is loaded.
-
-## Prerequisites
-
-The user must have:
-1. **Emacs daemon running** (`emacs --daemon` or started via their config)
-2. **org-roam installed and configured** in their Emacs
-3. **An org-roam directory** set up (typically `~/org-roam/` or `~/Documents/org/roam/`)
-4. **The org-roam database initialized**
-5. **org-roam-skill package loaded** in their Emacs configuration
-
-### Installing org-roam-skill
-
-**For Doom Emacs**, add to `config.el`:
-```elisp
-(use-package! org-roam-skill
-  :load-path "~/.claude/skills/org-roam-skill")
-```
-
-**For vanilla Emacs**, add to `init.el`:
-```elisp
-(add-to-list 'load-path "~/.claude/skills/org-roam-skill")
-(require 'org-roam-skill)
-```
-
-After adding, restart Emacs or eval the config. Verify with:
-```bash
-emacsclient --eval "(featurep 'org-roam-skill)"
-```
-
-**The skill works with any org-roam configuration out of the box.** No special setup required!
-
-### Optional: Recommended Configuration
-
-For optimal programmatic access, you may want to configure org-roam to use timestamp-only filenames:
-
-**For Doom Emacs:**
-```elisp
-(setq org-roam-directory "~/Documents/org/roam/")
-
-(after! org-roam
-  (setq org-roam-capture-templates
-        '(("d" "default" plain "%?"
-           :target (file+head "%<%Y%m%d%H%M%S>.org" "${title}")
-           :unnarrowed t))))
-```
-
-**For vanilla Emacs:**
-```elisp
-(setq org-roam-directory "~/Documents/org/roam/")
-
-(with-eval-after-load 'org-roam
-  (setq org-roam-capture-templates
-        '(("d" "default" plain "%?"
-           :target (file+head "%<%Y%m%d%H%M%S>.org" "${title}")
-           :unnarrowed t))))
-```
-
-**Why this is recommended (but not required):**
-- Creates files like `20251019193157.org` instead of `20251019193157-title-slug.org`
-- Cleaner, more predictable filenames
-- The skill auto-detects and works with either format
-
-**Note**: The `"${title}"` template prevents #+title duplication (org-roam adds it automatically).
-
-## Using emacsclient
-
-All operations use `emacsclient` to connect to the running daemon. Functions from `org-roam-skill` are already loaded, so the pattern is simple:
+All operations use the auto-loading wrapper `~/.claude/skills/org-roam-skill/scripts/org-roam-eval`:
 
 ```bash
-emacsclient --eval "(function-name args)"
-```
+# Create note (tags MUST be a list, not string)
+~/.claude/skills/org-roam-skill/scripts/org-roam-eval "(org-roam-skill-create-note \"Title\" :tags '(\"tag\") :content \"text\")"
 
-This is instant - no loading overhead since functions stay in memory after initial Emacs startup.
-
-## Common Operations
-
-### 1. Finding the Org-roam Directory
-
-Ask the user for their org-roam directory, or use this to detect it:
-
-```bash
-emacsclient --eval "org-roam-directory"
-```
-
-### 2. Syncing the Database
-
-Before any operations, ensure the database is up to date:
-
-```bash
-emacsclient --eval "(org-roam-db-sync)"
-```
-
-### 3. Creating a New Note
-
-Use the `org-roam-skill-create-note` function (auto-detects user's template):
-
-```bash
-# Basic usage with inline content
-emacsclient --eval "(org-roam-skill-create-note \"Note Title\" :tags '(\"tag1\" \"tag2\") :content \"Optional content here\")"
-
-# Using temp file for large content (recommended)
+# Create with large content (recommended for >1KB content)
 TEMP=$(mktemp -t org-roam-content.XXXXXX)
 echo "Large content..." > "$TEMP"
-emacsclient --eval "(org-roam-skill-create-note \"Note Title\" :tags '(\"tag1\" \"tag2\") :content-file \"$TEMP\")"
-# Temp file is automatically deleted!
+~/.claude/skills/org-roam-skill/scripts/org-roam-eval "(org-roam-skill-create-note \"Title\" :content-file \"$TEMP\")"
+# Temp file auto-deleted!
+
+# Search
+~/.claude/skills/org-roam-skill/scripts/org-roam-eval "(org-roam-skill-search-by-title \"search-term\")"
+
+# Backlinks
+~/.claude/skills/org-roam-skill/scripts/org-roam-eval "(org-roam-skill-get-backlinks-by-title \"Note Title\")"
+
+# Link notes
+~/.claude/skills/org-roam-skill/scripts/org-roam-eval "(org-roam-skill-create-bidirectional-link \"Note A\" \"Note B\")"
+
+# Attach file
+~/.claude/skills/org-roam-skill/scripts/org-roam-eval "(org-roam-skill-attach-file \"Note Title\" \"/path/to/file\")"
+
+# Diagnostics
+~/.claude/skills/org-roam-skill/scripts/org-roam-eval "(org-roam-doctor)"
 ```
 
-**Function signature**: `(org-roam-skill-create-note TITLE &key tags content content-file keep-file no-format)`
+**Key principle**: Package auto-loads on first call, then stays in memory - no repeated loading overhead.
 
-**Parameters:**
-- `TITLE` (string, required): The note title
-- `:tags` (list of strings, optional): Tags as a quoted list like `'("tag1" "tag2")` - **NOT a single string**
-- `:content` (string, optional): Initial content for the note (for small/simple content)
-- `:content-file` (string, optional): Path to file containing content (recommended for large content). **File is automatically deleted after processing unless `:keep-file` is specified.**
-- `:keep-file` (boolean, optional): If `t`, prevent automatic deletion of `:content-file` (useful for debugging)
-- `:no-format` (boolean, optional): If `t`, skip content formatting
+## Core Workflows
 
-**Content Methods:**
+### Workflow A: Creating Notes
 
-Use `:content` for small, simple content:
+**Simple note:**
 ```bash
-emacsclient --eval "(org-roam-skill-create-note \"Quick Note\" :content \"Brief text\")"
+~/.claude/skills/org-roam-skill/scripts/org-roam-eval "(org-roam-skill-create-note \"Note Title\")"
 ```
 
-Use `:content-file` for large content, complex formatting, or special characters:
+**With tags and content:**
 ```bash
-# Create temp file with content
+~/.claude/skills/org-roam-skill/scripts/org-roam-eval "(org-roam-skill-create-note \"React Hooks\" :tags '(\"javascript\" \"react\") :content \"Brief notes here\")"
+```
+
+**With large content (recommended for complex/large content):**
+```bash
+# Create temp file
 TEMP=$(mktemp -t org-roam-content.XXXXXX)
-cat > "$TEMP" << 'EOF'
-# Large Document
 
-Multiple paragraphs with complex formatting...
+# Write content
+cat > "$TEMP" << 'EOF'
+* Introduction
+
+Content here with proper org-mode formatting.
+
+* Details
+
+More content.
 EOF
 
-# Pass file path to emacsclient (temp file is auto-deleted after processing)
-emacsclient --eval "(org-roam-skill-create-note \"Large Note\" :content-file \"$TEMP\")"
-
-# No cleanup needed - temp file is automatically deleted!
+# Create note (temp file is automatically deleted)
+~/.claude/skills/org-roam-skill/scripts/org-roam-eval "(org-roam-skill-create-note \"My Note\" :tags '(\"project\") :content-file \"$TEMP\")"
 ```
 
-**When to use each method:**
-- Use `:content` for: short text, simple one-liners, no shell escaping issues
-- Use `:content-file` for: large content (>1KB), complex formatting, special characters, avoiding shell argument limits
+**Critical: Tags must be a list:**
+- ❌ Wrong: `:tags "tag"` (string)
+- ✅ Correct: `:tags '("tag")` (list)
+- ✅ Correct: `:tags '("tag1" "tag2")` (multiple tags)
 
-**Automatic Temp File Cleanup:**
+**Content formatting:**
 
-When using `:content-file`, the temp file is automatically deleted after the note is created. This happens automatically - you don't need to manually `rm` the file.
+By default, content is automatically converted to org-mode:
+- Markdown → Org: `# Heading` → `* Heading`
+- Org → Org: Validates and normalizes
+- Plain text → Unchanged
 
-If you need to keep the temp file for debugging, use `:keep-file t`:
+Disable with `:no-format t` or prefix content with `NO_FORMAT:`.
+
+See **references/functions.md** for detailed parameter documentation.
+
+### Workflow B: Searching Notes
+
+**By title:**
 ```bash
-TEMP=$(mktemp -t org-roam-debug.XXXXXX)
-echo "Debug content" > "$TEMP"
-emacsclient --eval "(org-roam-skill-create-note \"Debug\" :content-file \"$TEMP\" :keep-file t)"
-echo "Temp file preserved at: $TEMP"
-rm "$TEMP"  # Manual cleanup required when using :keep-file
+~/.claude/skills/org-roam-skill/scripts/org-roam-eval "(org-roam-skill-search-by-title \"react\")"
 ```
 
-**Common tag mistakes:**
-- ❌ Wrong: `"planning"` (string)
-- ✅ Correct: `'("planning")` (list with one element)
-- ❌ Wrong: `'planning` (unquoted symbol)
-- ✅ Correct: `'("tag1" "tag2")` (list with multiple elements)
-
-**Content Formatting (NEW):**
-
-By default, content is automatically formatted to org-mode syntax using pandoc with format auto-detection. This handles:
-- **Markdown → Org conversion** (`# Heading` → `* Heading`, `` ```code``` `` → `#+begin_src`)
-- **Org → Org normalization** (cleans up and validates org syntax, preserves `* Heading` structure)
-- **Plain text** → Passes through unchanged
-
-Format detection uses these heuristics:
-- Detects org: `* Heading`, `#+begin_src`, `:PROPERTIES:`, `/italic/`
-- Defaults to markdown: `# Heading`, plain text, or no clear signals
-
-**To disable formatting**, use either:
-1. Pass `:no-format t`: `(org-roam-skill-create-note "Title" :content "content" :no-format t)`
-2. Prefix content with `NO_FORMAT:`: `(org-roam-skill-create-note "Title" :content "NO_FORMAT:raw content")`
-
-**Examples:**
-
-Markdown content (auto-converted):
+**By tag:**
 ```bash
-emacsclient --eval "(org-roam-skill-create-note \"My Note\" :tags '(\"project\") :content \"# Introduction\n\nSome **bold** text.\")"
-# Creates: * Introduction\n\nSome *bold* text.
+~/.claude/skills/org-roam-skill/scripts/org-roam-eval "(org-roam-skill-search-by-tag \"javascript\")"
 ```
 
-Org content (normalized):
+**By content:**
 ```bash
-emacsclient --eval "(org-roam-skill-create-note \"My Note\" :content \"* Section\n\nContent here.\")"
-# Validates and cleans org syntax
+~/.claude/skills/org-roam-skill/scripts/org-roam-eval "(org-roam-skill-search-by-content \"functional programming\")"
 ```
 
-Skip formatting:
+**List all tags:**
 ```bash
-emacsclient --eval "(org-roam-skill-create-note \"My Note\" :content \"Raw text\" :no-format t)"
-# Inserts exactly: Raw text
+~/.claude/skills/org-roam-skill/scripts/org-roam-eval "(org-roam-skill-list-all-tags)"
 ```
 
-The function automatically:
-- Detects filename format from user's `org-roam-capture-templates`
-- Generates proper filenames (timestamp-only, timestamp-slug, or custom)
-- Handles head content to avoid #+title duplication
-- Sanitizes tags (replaces hyphens with underscores)
-- Formats content to org-mode (unless disabled)
-- Returns the file path of the created note
+### Workflow C: Managing Links
 
-**Note**: Avoid using `org-roam-capture-` directly for programmatic note creation, as it's designed for interactive use.
-
-### 4. Searching Notes by Title
-
-Use the `org-roam-skill-search-by-title` function:
-
+**Find backlinks (notes linking TO this note):**
 ```bash
-emacsclient --eval "(org-roam-skill-search-by-title \"search-term\")"
+~/.claude/skills/org-roam-skill/scripts/org-roam-eval "(org-roam-skill-get-backlinks-by-title \"React\")"
 ```
 
-Returns a list of (id title file) tuples.
-
-### 5. Finding Backlinks
-
-Use the `org-roam-skill-get-backlinks-by-title` function:
-
+**Create bidirectional links:**
 ```bash
-emacsclient --eval "(org-roam-skill-get-backlinks-by-title \"Note Title\")"
+~/.claude/skills/org-roam-skill/scripts/org-roam-eval "(org-roam-skill-create-bidirectional-link \"React Hooks\" \"React\")"
 ```
 
-Returns a list of (id title file) tuples for notes linking to this note.
+This creates:
+- Link in "React Hooks" → "React"
+- Link in "React" → "React Hooks"
 
-### 6. Listing All Notes
-
-List all notes with their IDs and titles:
-
+**Insert one-way link:**
 ```bash
-emacsclient --eval "(mapcar
-  (lambda (node)
-    (format \"%s|%s|%s\"
-      (org-roam-node-id node)
-      (org-roam-node-title node)
-      (org-roam-node-file node)))
-  (org-roam-node-list))"
+~/.claude/skills/org-roam-skill/scripts/org-roam-eval "(org-roam-skill-insert-link-in-note \"Source Note\" \"Target Note\")"
 ```
 
-### 7. Finding Notes by Tag
+### Workflow D: File Attachments
 
-Query notes with specific tags:
-
+**Attach file:**
 ```bash
-emacsclient --eval "(mapcar
-  (lambda (node)
-    (format \"%s|%s\"
-      (org-roam-node-title node)
-      (org-roam-node-file node)))
-  (seq-filter
-    (lambda (node)
-      (member \"TAG\" (org-roam-node-tags node)))
-    (org-roam-node-list)))"
+~/.claude/skills/org-roam-skill/scripts/org-roam-eval "(org-roam-skill-attach-file \"My Note\" \"/path/to/document.pdf\")"
 ```
 
-### 8. Getting Node Details
-
-Retrieve full details about a specific node:
-
+**List attachments:**
 ```bash
-emacsclient --eval "(let ((node (org-roam-node-from-title-or-alias \"Note Title\")))
-  (when node
-    (format \"ID: %s\\nTitle: %s\\nFile: %s\\nTags: %s\\nAliases: %s\"
-      (org-roam-node-id node)
-      (org-roam-node-title node)
-      (org-roam-node-file node)
-      (org-roam-node-tags node)
-      (org-roam-node-aliases node))))"
+~/.claude/skills/org-roam-skill/scripts/org-roam-eval "(org-roam-skill-list-attachments \"My Note\")"
 ```
 
-### 9. Inserting a Link
+Attachments use org-mode's standard `org-attach` system.
 
-Insert a link to another note at point in the current buffer:
+### Workflow E: Complete Example
 
+User says: "Create a note about React Hooks and link it to my React note"
+
+**Step 1: Search for existing note**
 ```bash
-emacsclient --eval "(let ((target-node (org-roam-node-from-title-or-alias \"Target Note\")))
-  (when target-node
-    (insert (org-link-make-string
-              (concat \"id:\" (org-roam-node-id target-node))
-              (org-roam-node-title target-node)))))"
+~/.claude/skills/org-roam-skill/scripts/org-roam-eval "(org-roam-node-from-title-or-alias \"React\")"
 ```
 
-### 10. Getting All Tags
-
-Use the `org-roam-skill-list-all-tags` function:
-
+**Step 2: Create new note**
 ```bash
-emacsclient --eval "(org-roam-skill-list-all-tags)"
+~/.claude/skills/org-roam-skill/scripts/org-roam-eval "(org-roam-skill-create-note \"React Hooks\" :tags '(\"javascript\" \"react\") :content \"Notes about React Hooks\")"
 ```
 
-Returns a sorted list of all unique tags.
-
-### 11. Attaching Files to Notes
-
-Use the attachment functions to manage file attachments with org-attach:
-
-**Attach a file to a note (copies the file):**
-
+**Step 3: Create bidirectional links**
 ```bash
-emacsclient --eval "(org-roam-skill-attach-file \"Note Title\" \"/path/to/file.pdf\")"
+~/.claude/skills/org-roam-skill/scripts/org-roam-eval "(org-roam-skill-create-bidirectional-link \"React Hooks\" \"React\")"
 ```
 
-**List all attachments for a note:**
+**Step 4: Show user the result**
+Present the created note path and confirm links were established.
 
+## Using the Auto-Load Wrapper
+
+All operations use `~/.claude/skills/org-roam-skill/scripts/org-roam-eval` which:
+1. Auto-loads `org-roam-skill` package on first call
+2. Connects to running Emacs daemon
+3. Executes the elisp expression
+
+After first call, functions stay in memory - no loading overhead.
+
+**Find org-roam directory:**
 ```bash
-emacsclient --eval "(org-roam-skill-list-attachments \"Note Title\")"
+~/.claude/skills/org-roam-skill/scripts/org-roam-eval "org-roam-directory"
 ```
 
-**Get the full path to an attachment:**
-
+**Sync database (if needed):**
 ```bash
-emacsclient --eval "(get-attachment-path \"Note Title\" \"file.pdf\")"
+~/.claude/skills/org-roam-skill/scripts/org-roam-eval "(org-roam-db-sync)"
 ```
-
-**Delete an attachment:**
-
-```bash
-emacsclient --eval "(delete-note-attachment \"Note Title\" \"file.pdf\")"
-```
-
-**Get attachment directory path:**
-
-```bash
-emacsclient --eval "(get-note-attachment-dir \"Note Title\")"
-```
-
-**How it works:**
-- Uses org-mode's standard `org-attach` system
-- Files are copied to `{org-attach-id-dir}/{node-id}/filename`
-- Adds an `ATTACH` property to the note automatically
-- All functions accept either note title or node ID
 
 ## Available Functions
 
-All functions from `org-roam-skill.el` are available once the package is loaded (all use `org-roam-skill-` prefix):
+All functions use `org-roam-skill-` prefix:
 
-1. **org-roam-doctor**: Diagnostic function to verify org-roam setup and configuration
-2. **org-roam-skill-create-note**: Create new org-roam notes (auto-detects user's template format)
-3. **org-roam-skill-search-by-title/tag/content**: Search notes by various criteria
-4. **org-roam-skill-get-backlinks-by-title/id**: Find backlinks and forward links between notes
-5. **org-roam-skill-insert-link-in-note, org-roam-skill-create-bidirectional-link**: Insert links programmatically
-6. **org-roam-skill-list-all-tags, org-roam-skill-add-tag, org-roam-skill-remove-tag**: Tag management
-7. **org-roam-skill-attach-file, org-roam-skill-list-attachments, etc**: File attachment management
-8. **org-roam-skill-check-setup, org-roam-skill-get-graph-stats, org-roam-skill-find-orphan-notes**: Utility functions
+**Note Management:**
+- `org-roam-skill-create-note` - Create new notes
+- `org-roam-skill-search-by-title/tag/content` - Search notes
+- `org-roam-skill-get-backlinks-by-title/id` - Find backlinks
+- `org-roam-skill-insert-link-in-note` - Insert links
+- `org-roam-skill-create-bidirectional-link` - Create two-way links
 
-All functions auto-detect the user's org-roam configuration and require no customization.
+**Tag Management:**
+- `org-roam-skill-list-all-tags` - List all tags
+- `org-roam-skill-add-tag` - Add tag to note
+- `org-roam-skill-remove-tag` - Remove tag from note
 
-## Working with the User
+**Attachments:**
+- `org-roam-skill-attach-file` - Attach file to note
+- `org-roam-skill-list-attachments` - List attachments
 
-1. **First time setup**: Verify org-roam-skill is loaded:
-   ```bash
-   emacsclient --eval "(featurep 'org-roam-skill)"
-   ```
+**Utilities:**
+- `org-roam-skill-check-setup` - Verify configuration
+- `org-roam-skill-get-graph-stats` - Graph statistics
+- `org-roam-skill-find-orphan-notes` - Find isolated notes
+- `org-roam-doctor` - Comprehensive diagnostics
 
-   If `nil`, ask user to add package to their Emacs config (see Prerequisites section).
+See **references/functions.md** for complete function documentation with all parameters and examples.
 
-2. **Run diagnostic**: Verify everything is configured:
-   ```bash
-   emacsclient --eval "(org-roam-doctor)"
-   ```
+## Setup and Troubleshooting
 
-3. **Check daemon is running**: Use `emacsclient --eval "t"` to verify connection
+**Installation:** See **references/installation.md** for:
+- Prerequisites (Emacs daemon, org-roam)
+- No manual configuration needed (auto-loads on first use)
+- Optional: org-roam configuration recommendations
 
-4. **Functions are always available**: No loading needed - functions stay in memory
+**Troubleshooting:** See **references/troubleshooting.md** for:
+- Connection issues (daemon not running)
+- Package loading problems
+- Database sync issues
+- Tag formatting errors
+- Search problems
+- Link issues
+- Performance optimization
 
-4. **Sync database when needed**: Call `(org-roam-db-sync)` after creating/modifying notes
-
-5. **Parse output carefully**: emacsclient returns Elisp data structures
-
-6. **Use node IDs** for reliable linking, not file paths
-
-7. **Present results clearly** - format the output for readability
-
-8. **Handle errors gracefully** - check if daemon is running and org-roam is loaded
+**Quick diagnostic:**
+```bash
+~/.claude/skills/org-roam-skill/scripts/org-roam-eval "(org-roam-doctor)"
+```
 
 ## Parsing emacsclient Output
 
-emacsclient returns Elisp-formatted data. Common patterns:
-
+emacsclient returns Elisp-formatted data:
 - Strings: `"result"` (with quotes)
-- Lists: `("item1" "item2" "item3")`
-- nil: No output or `nil`
+- Lists: `("item1" "item2")`
+- nil: `nil` or no output
 - Numbers: `42`
 
-You may need to:
-- Strip surrounding quotes from strings
-- Parse list structures
-- Handle nil/empty results
+Strip quotes from strings and parse structures as needed.
 
 ## Best Practices
 
-1. Use `org-roam-node-*` functions for data access
-2. Use `org-roam-node-from-title-or-alias` for flexible searching
-3. Always check if nodes exist before operations
-4. Sync database after creating/modifying notes if needed
-5. Leverage org-roam's query functions rather than SQL directly
-6. Use `seq-filter` and `mapcar` for list operations
+1. **Use lists for tags**: Always `'("tag")` not `"tag"`
+2. **Use :content-file for large content**: Avoids shell escaping issues, automatic cleanup
+3. **Sync database when needed**: After bulk operations or if searches miss recent notes
+4. **Use node IDs for reliable linking**: More stable than file paths
+5. **Check if nodes exist**: Before operations on specific notes
+6. **Present results clearly**: Format output for user readability
+7. **Handle errors gracefully**: Check daemon running, packages loaded
 
-## Example Workflow: Creating a Connected Note
+## Additional Resources
 
-When user says: "Create a note about React Hooks and link it to my React note"
+**References:**
+- **emacsclient-usage.md** - Detailed emacsclient patterns
+- **org-roam-api.md** - Org-roam API reference
+- **functions.md** - Complete function documentation
+- **installation.md** - Setup and configuration guide
+- **troubleshooting.md** - Common issues and solutions
 
-1. Search for existing "React" note:
-   ```bash
-   emacsclient --eval "(org-roam-node-from-title-or-alias \"React\")"
-   ```
-
-2. Create new note "React Hooks" with tags:
-   ```bash
-   emacsclient --eval "(org-roam-skill-create-note \"React Hooks\" :tags '(\"javascript\" \"react\"))"
-   ```
-
-3. Insert bidirectional links between the notes:
-   ```bash
-   emacsclient --eval "(org-roam-skill-create-bidirectional-link \"React Hooks\" \"React\")"
-   ```
-
-4. Show the user what was created and the file path
-
-All functions are instantly available - no loading overhead.
-
-## Error Handling
-
-Check for common issues:
-
-1. **Daemon not running**:
-   ```bash
-   emacsclient --eval "t" 2>&1
-   ```
-   If error, suggest: `emacs --daemon`
-
-2. **org-roam-skill not loaded**:
-   ```bash
-   emacsclient --eval "(featurep 'org-roam-skill)"
-   ```
-   If `nil`, ask user to add package to Emacs config (see Prerequisites section).
-
-3. **org-roam not loaded**:
-   ```bash
-   emacsclient --eval "(featurep 'org-roam)"
-   ```
-
-3. **Database not initialized**:
-   ```bash
-   emacsclient --eval "(file-exists-p org-roam-db-location)"
-   ```
-
-## Performance Tips
-
-- The Emacs daemon keeps org-roam loaded, making operations instant
-- No startup time overhead compared to batch mode
-- Database stays in memory for faster queries
-- Can perform multiple operations in sequence efficiently
+**Quick access patterns:**
+- Need installation help? → `references/installation.md`
+- Function parameters unclear? → `references/functions.md`
+- Something not working? → `references/troubleshooting.md`
+- Need advanced emacsclient usage? → `references/emacsclient-usage.md`
+- Want org-roam API details? → `references/org-roam-api.md`
