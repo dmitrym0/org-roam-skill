@@ -37,3 +37,9 @@ jobs:
 
       - name: Run tests
         run: make test
+
+      - name: Byte-compile
+        run: make compile
+
+      - name: Check documentation
+        run: make checkdoc
