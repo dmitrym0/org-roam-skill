@@ -138,5 +138,12 @@ This is an alias for org-roam-skill-create-note with different arg order.
 Return the file path of the created note."
   (org-roam-skill-create-note title :content content :tags tags))
 
+;;; Advice
+
+;; Example of how to add advice to extend functionality
+;; (advice-add 'org-roam-skill-create-note :after
+;;             (lambda (&rest args) 
+;;               (message "Note created!")))
+
 (provide 'org-roam-skill-create)
 ;;; org-roam-skill-create.el ends here
