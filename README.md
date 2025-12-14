@@ -31,9 +31,8 @@ The skill works with **Claude Code only** (not Claude Desktop, which uses a diff
 3. **Emacs daemon running**: Start with `emacs --daemon`
 4. **emacsclient available**: Should be installed with Emacs
 5. **org-roam directory set up**: Your notes directory (e.g., `~/org-roam/` or `~/Documents/org/roam/`)
-6. **org-roam-skill package loaded in your Emacs configuration** (see installation below)
 
-**The skill works with your existing org-roam configuration** - no customization required!
+**The skill auto-loads on first use** - no Emacs configuration needed!
 
 ### Optional: Recommended Configuration
 
@@ -68,11 +67,9 @@ For cleaner filenames, you can optionally configure org-roam to use timestamp-on
 
 ## Installation
 
-### Step 1: Install the Skill for Claude Code
+### Step 1: Install the Skill
 
-This skill can be installed in three different locations depending on your needs:
-
-#### Option 1: Personal Skills (Recommended for individual use)
+#### Option 1: Personal Skills (Recommended)
 
 Install globally for all your Claude Code sessions:
 
@@ -98,51 +95,32 @@ git clone https://github.com/majorgreys/org-roam-skill.git
 
 The skill only activates when working in that project.
 
-#### Option 3: Via Plugins (Advanced)
+### Step 2: Verify Installation
 
-If you're distributing this skill as a plugin, users can install it via the Claude Code plugin system. See the [Agent Skills documentation](https://docs.claude.com/en/docs/agents-and-tools/agent-skills/best-practices) for details.
-
-### Step 2: Load the Package in Emacs
-
-**For Doom Emacs**, add to `~/.doom.d/config.el`:
-
-```elisp
-(use-package! org-roam-skill
-  :load-path "~/.claude/skills/org-roam-skill")
-```
-
-**For vanilla Emacs**, add to `~/.emacs.d/init.el`:
-
-```elisp
-(add-to-list 'load-path (expand-file-name "~/.claude/skills/org-roam-skill"))
-(require 'org-roam-skill)
-```
-
-After adding, **restart Emacs** or evaluate the configuration.
-
-### Step 3: Verify Installation
-
-**Verify Claude Code can see the skill:**
-
-1. Start Claude Code
-2. Ask: "Can you help me with my org-roam notes?"
-3. Claude should recognize the skill and activate it automatically
-
-**Verify the package is loaded in Emacs:**
+**Verify Emacs daemon is running:**
 
 ```bash
-emacsclient --eval "(featurep 'org-roam-skill)"
+emacsclient --eval "t"
 ```
 
-Should return `t`. If it returns `nil`, the package isn't loaded yet.
+Should return `t`. If not, start the daemon:
+```bash
+emacs --daemon
+```
 
 **Run diagnostic to verify org-roam setup:**
 
 ```bash
-emacsclient --eval "(org-roam-doctor)"
+~/.claude/skills/org-roam-skill/scripts/org-roam-eval "(org-roam-doctor)"
 ```
 
-This will check your org-roam configuration, database, and templates.
+This auto-loads the skill package and checks your org-roam configuration, database, and templates.
+
+**How it works:**
+- The skill includes a wrapper script (`scripts/org-roam-eval`) that auto-loads the package on first use
+- No manual Emacs configuration needed
+- Package stays in memory after first call (fast subsequent calls)
+- Always uses the version that ships with the skill
 
 **Note**: Skills are **model-invoked** - they activate automatically based on what you ask. You don't need to run any commands or mention the skill name. Just ask naturally about your notes!
 

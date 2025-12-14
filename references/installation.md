@@ -1,60 +1,71 @@
 # Installation and Setup
 
-Complete installation guide for org-roam-skill.
+Simple installation guide for org-roam-skill.
 
 ## Prerequisites
 
+You need:
 1. **Emacs with org-roam installed and configured**
-2. **Emacs daemon running**: Start with `emacs --daemon`
-3. **emacsclient available**: Should be installed with Emacs
-4. **org-roam directory set up**: Your notes directory (e.g., `~/org-roam/` or `~/Documents/org/roam/`)
-5. **org-roam database initialized**
+2. **Emacs daemon running**: `emacs --daemon`
+3. **org-roam directory set up**: Your notes directory (e.g., `~/org-roam/` or `~/Documents/org/roam/`)
+4. **org-roam database initialized**
 
-## Step 1: Load the Package in Emacs
+That's it! No manual package loading or configuration needed.
 
-### For Doom Emacs
+## How Auto-Loading Works
 
-Add to `~/.doom.d/config.el`:
+The skill includes a wrapper script at `scripts/org-roam-eval` that:
+1. Checks if `org-roam-skill` package is loaded
+2. If not, automatically loads it from the skill directory
+3. Executes your elisp expression
+4. On subsequent calls, package is already in memory (fast!)
 
-```elisp
-(use-package! org-roam-skill
-  :load-path "~/.claude/skills/org-roam-skill")
-```
+You don't need to modify your Emacs configuration at all.
 
-### For Vanilla Emacs
+## Verification
 
-Add to `~/.emacs.d/init.el`:
-
-```elisp
-(add-to-list 'load-path (expand-file-name "~/.claude/skills/org-roam-skill"))
-(require 'org-roam-skill)
-```
-
-After adding, **restart Emacs** or evaluate the configuration.
-
-## Step 2: Verify Installation
-
-### Verify package is loaded
+### Check Emacs daemon is running
 
 ```bash
-emacsclient --eval "(featurep 'org-roam-skill)"
+emacsclient --eval "t"
 ```
 
-Should return `t`. If it returns `nil`, the package isn't loaded yet.
+Should return `t`. If not, start the daemon:
+```bash
+emacs --daemon
+```
+
+### Check org-roam is installed
+
+```bash
+emacsclient --eval "(featurep 'org-roam)"
+```
+
+Should return `t`. If not, install org-roam in Emacs.
+
+### Find your org-roam directory
+
+```bash
+~/.claude/skills/org-roam-skill/scripts/org-roam-eval "org-roam-directory"
+```
+
+Returns your configured org-roam directory path.
 
 ### Run diagnostic
 
 ```bash
-emacsclient --eval "(org-roam-doctor)"
+~/.claude/skills/org-roam-skill/scripts/org-roam-eval "(org-roam-doctor)"
 ```
 
 This checks your org-roam configuration, database, and templates.
 
-## Optional: Recommended Configuration
+## Optional: Recommended org-roam Configuration
 
-For cleaner filenames, configure org-roam to use timestamp-only format:
+For cleaner filenames, configure org-roam to use timestamp-only format.
 
 ### For Doom Emacs
+
+Add to `~/.doom.d/config.el`:
 
 ```elisp
 (setq org-roam-directory "~/Documents/org/roam/")
@@ -67,6 +78,8 @@ For cleaner filenames, configure org-roam to use timestamp-only format:
 ```
 
 ### For Vanilla Emacs
+
+Add to `~/.emacs.d/init.el`:
 
 ```elisp
 (setq org-roam-directory "~/Documents/org/roam/")
@@ -89,16 +102,6 @@ For cleaner filenames, configure org-roam to use timestamp-only format:
 
 The `"${title}"` in the template prevents #+title duplication, as org-roam adds it automatically.
 
-## Finding Your Org-roam Directory
-
-Ask the skill to detect it:
-
-```bash
-emacsclient --eval "org-roam-directory"
-```
-
-Returns your configured org-roam directory path.
-
 ## Common Setup Issues
 
 ### Daemon not running
@@ -106,6 +109,16 @@ Returns your configured org-roam directory path.
 ```bash
 emacs --daemon
 ```
+
+### org-roam not installed
+
+Install org-roam package in Emacs. For Doom:
+```elisp
+;; In packages.el
+(package! org-roam)
+```
+
+For vanilla Emacs, use package-install or your preferred package manager.
 
 ### org-roam not loaded
 
@@ -116,20 +129,16 @@ Ensure org-roam loads on startup:
 (org-roam-db-autosync-mode)
 ```
 
-### Database not syncing
+### Database not initialized
 
 Manually sync:
 
 ```bash
-emacsclient --eval "(org-roam-db-sync)"
+~/.claude/skills/org-roam-skill/scripts/org-roam-eval "(org-roam-db-sync)"
 ```
 
-### Package not found
+## Upgrading the Skill
 
-Verify the load-path is correct:
+When the skill is updated, simply pull the latest version. No configuration changes needed since the package auto-loads from the skill directory.
 
-```bash
-ls ~/.claude/skills/org-roam-skill/org-roam-skill.el
-```
-
-Should exist. If not, check installation location.
+The auto-load mechanism ensures you're always using the version of `org-roam-skill` that ships with the skill, not a separately installed version.
