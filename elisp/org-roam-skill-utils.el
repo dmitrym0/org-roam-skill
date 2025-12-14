@@ -13,41 +13,65 @@
 (require 'org-roam)
 (require 'seq)
 
+;;; Debugging
+
+defvar org-roam-skill-debug nil
+  "Enable debug logging if non-nil."
+
+defun org-roam-skill-log (message)
+  "Log a debug message if org-roam-skill-debug is non-nil."
+  (when org-roam-skill-debug
+    (message "[DEBUG] %s" message)))
+
 ;;;###autoload
 (defun org-roam-skill-check-setup ()
   "Check if org-roam is properly set up.
 Return a plist with status information."
+  (org-roam-skill-log "Checking org-roam setup...")
   (condition-case err
-      (list :org-roam-loaded (featurep 'org-roam)
-            :directory org-roam-directory
-            :directory-exists (file-exists-p org-roam-directory)
-            :database-location org-roam-db-location
-            :database-exists (file-exists-p org-roam-db-location)
-            :node-count (length (org-roam-node-list)))
+      (progn
+        (org-roam-skill-log "org-roam loaded: %s" (featurep 'org-roam))
+        (org-roam-skill-log "org-roam directory: %s" org-roam-directory)
+        (org-roam-skill-log "org-roam database: %s" org-roam-db-location)
+        (list :org-roam-loaded (featurep 'org-roam)
+              :directory org-roam-directory
+              :directory-exists (file-exists-p org-roam-directory)
+              :database-location org-roam-db-location
+              :database-exists (file-exists-p org-roam-db-location)
+              :node-count (length (org-roam-node-list))))
     (error
      (message "Error checking org-roam setup: %s" (error-message-string err))
+     (org-roam-skill-log "Error checking org-roam setup: %s" (error-message-string err))
      (list :error (error-message-string err)))))
 
 ;;;###autoload
 (defun org-roam-skill-get-note-info (title)
   "Get comprehensive information about a note by TITLE.
 Return a formatted string with all note details."
+  (org-roam-skill-log "Getting note info for: %s" title)
   (condition-case err
       (let ((node (org-roam-node-from-title-or-alias title)))
+        (org-roam-skill-log "Found node: %s" (if node "yes" "no"))
         (if node
-            (format
-             "Title: %s\nID: %s\nFile: %s\nTags: %s\nAliases: %s\nRefs: %s\nBacklinks: %d\nLevel: %d"
-             (org-roam-node-title node)
-             (org-roam-node-id node)
-             (org-roam-node-file node)
-             (or (org-roam-node-tags node) "none")
-             (or (org-roam-node-aliases node) "none")
-             (or (org-roam-node-refs node) "none")
-             (length (org-roam-backlinks-get node))
-             (org-roam-node-level node))
-          "Note not found"))
+            (progn
+              (org-roam-skill-log "Node ID: %s" (org-roam-node-id node))
+              (org-roam-skill-log "Node file: %s" (org-roam-node-file node))
+              (format
+               "Title: %s\nID: %s\nFile: %s\nTags: %s\nAliases: %s\nRefs: %s\nBacklinks: %d\nLevel: %d"
+               (org-roam-node-title node)
+               (org-roam-node-id node)
+               (org-roam-node-file node)
+               (or (org-roam-node-tags node) "none")
+               (or (org-roam-node-aliases node) "none")
+               (or (org-roam-node-refs node) "none")
+               (length (org-roam-backlinks-get node))
+               (org-roam-node-level node)))
+          (progn
+            (org-roam-skill-log "Note not found: %s" title)
+            "Note not found")))
     (error
      (message "Error getting note info: %s" (error-message-string err))
+     (org-roam-skill-log "Error getting note info: %s" (error-message-string err))
      (format "Error: %s" (error-message-string err)))))
 
 ;;;###autoload
