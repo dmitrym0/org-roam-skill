@@ -27,6 +27,7 @@ defun org-roam-skill-log (message)
 (defun org-roam-skill-check-setup ()
   "Check if org-roam is properly set up.
 Return a plist with status information."
+  (interactive)
   (org-roam-skill-log "Checking org-roam setup...")
   (condition-case err
       (progn
@@ -48,6 +49,7 @@ Return a plist with status information."
 (defun org-roam-skill-get-note-info (title)
   "Get comprehensive information about a note by TITLE.
 Return a formatted string with all note details."
+  (interactive "sNote title: ")
   (org-roam-skill-log "Getting note info for: %s" title)
   (condition-case err
       (let ((node (org-roam-node-from-title-or-alias title)))
@@ -78,6 +80,7 @@ Return a formatted string with all note details."
 (defun org-roam-skill-list-recent-notes (n)
   "List the N most recently modified notes.
 Return a list of (id title file mtime) tuples."
+  (interactive "nNumber of recent notes: ")
   (condition-case err
       (mapcar
        (lambda (node)
@@ -100,6 +103,7 @@ Return a list of (id title file mtime) tuples."
 (defun org-roam-skill-find-orphan-notes ()
   "Find notes that have no backlinks and no forward links.
 Return a list of (id title file) tuples for orphaned notes."
+  (interactive)
   (condition-case err
       (seq-filter
        (lambda (node-info)
@@ -130,6 +134,7 @@ Return a list of (id title file) tuples for orphaned notes."
 (defun org-roam-skill-get-graph-stats ()
   "Get statistics about the org-roam graph.
 Return a plist with various statistics."
+  (interactive)
   (condition-case err
       (let* ((nodes (org-roam-node-list))
              (total-nodes (length nodes))
@@ -171,6 +176,7 @@ Should be called with point in an org-mode buffer."
 (defun format-org-roam-note (title-or-id)
   "Format the org-roam note identified by TITLE-OR-ID.
 Aligns tables and cleans up structure. Returns t on success."
+  (interactive "sNote title or ID: ")
   (condition-case err
       (let* ((node (if (and (stringp title-or-id)
                             (string-match-p "^[0-9a-f]\{8\}-" title-or-id))
