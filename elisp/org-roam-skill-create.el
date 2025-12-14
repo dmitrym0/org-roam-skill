@@ -31,6 +31,46 @@ defcustom org-roam-skill-auto-format-content t
   :type 'boolean
   :group 'org-roam-skill)
 
+(defun org-roam-skill--create-file-structure (file-path node-id title head-content tags formatted-content)
+  "Create the file structure for an org-roam note.
+Insert PROPERTIES, head content, title, tags, and formatted content."
+  (with-temp-file file-path
+    ;; Insert PROPERTIES block with ID
+    (insert ":PROPERTIES:\n")
+    (insert (format ":ID:       %s\n" node-id))
+    (insert ":END:\n")
+
+    ;; Insert head content if template specifies it
+    (when (and head-content (not (string-empty-p head-content)))
+      (let* ((expanded-head
+              ;; First expand ${title}
+              (replace-regexp-in-string "\\${title}" title head-content))
+             ;; Then expand time format specifiers
+             (expanded-head (org-roam-skill--expand-time-formats expanded-head)))
+        (insert expanded-head)
+        (unless (string-suffix-p "\n" expanded-head)
+          (insert "\n"))))
+
+    ;; If head content doesn't include title, add it
+    (unless (string-match-p "#\\+\(\?:title\|TITLE\):" (or head-content ""))
+      (insert (format "#+TITLE: %s\n" title)))
+
+    ;; Insert filetags if provided (sanitize to remove hyphens)
+    (when tags
+      (let ((sanitized-tags
+             (mapcar #'org-roam-skill--sanitize-tag tags)))
+        (insert (format "#+FILETAGS: :%s:\n"
+                        (mapconcat (lambda (tag) tag) sanitized-tags ":")))))
+
+    ;; Add blank line after frontmatter
+    (insert "\n")
+
+    ;; Insert formatted content if provided
+    (when formatted-content
+      (insert formatted-content)
+      (unless (string-suffix-p "\n" formatted-content)
+        (insert "\n")))))
+
 ;;;###autoload
 (cl-defun org-roam-skill-create-note (title &key tags content content-file keep-file no-format)
   "Create a new org-roam note with TITLE, optional TAGS and CONTENT.
@@ -72,42 +112,7 @@ Return the file path of the created note."
     (unwind-protect
         (progn
           ;; Create the file with proper org-roam structure
-          (with-temp-file file-path
-            ;; Insert PROPERTIES block with ID
-            (insert ":PROPERTIES:\n")
-            (insert (format ":ID:       %s\n" node-id))
-            (insert ":END:\n")
-
-            ;; Insert head content if template specifies it
-            (when (and head-content (not (string-empty-p head-content)))
-              (let* ((expanded-head
-                      ;; First expand ${title}
-                      (replace-regexp-in-string "\\${title}" title head-content))
-                     ;; Then expand time format specifiers
-                     (expanded-head (org-roam-skill--expand-time-formats expanded-head)))
-                (insert expanded-head)
-                (unless (string-suffix-p "\n" expanded-head)
-                  (insert "\n"))))
-
-            ;; If head content doesn't include title, add it
-            (unless (string-match-p "#\\+\\(?:title\\|TITLE\\):" (or head-content ""))
-              (insert (format "#+TITLE: %s\n" title)))
-
-            ;; Insert filetags if provided (sanitize to remove hyphens)
-            (when tags
-              (let ((sanitized-tags
-                     (mapcar #'org-roam-skill--sanitize-tag tags)))
-                (insert (format "#+FILETAGS: :%s:\n"
-                                (mapconcat (lambda (tag) tag) sanitized-tags ":")))))
-
-            ;; Add blank line after frontmatter
-            (insert "\n")
-
-            ;; Insert formatted content if provided
-            (when formatted-content
-              (insert formatted-content)
-              (unless (string-suffix-p "\n" formatted-content)
-                (insert "\n"))))
+          (org-roam-skill--create-file-structure file-path node-id title head-content tags formatted-content)
 
           ;; Sync database to register the new note
           (org-roam-db-sync)
@@ -124,7 +129,7 @@ Return the file path of the created note."
             (delete-file content-file)
           (error
            (message "Warning: Could not delete temp file %s: %s"
-                   content-file (error-message-string err))))))))
+                   content-file (error-message-string err)))))))
 
 ;;;###autoload
 (defun org-roam-skill-create-note-with-content (title content &optional tags)
