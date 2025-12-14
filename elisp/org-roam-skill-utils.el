@@ -23,6 +23,31 @@ defun org-roam-skill-log (message)
   (when org-roam-skill-debug
     (message "[DEBUG] %s" message)))
 
+;;; Caching
+
+defvar org-roam-skill-graph-stats-cache nil
+  "Cache for org-roam-skill-get-graph-stats results.")
+
+defvar org-roam-skill-cache-ttl 300
+  "Time-to-live for cache entries in seconds.")
+
+defun org-roam-skill--cache-get (key)
+  "Get a value from the cache if it's still valid."
+  (let ((cached (gethash key org-roam-skill-graph-stats-cache)))
+    (if (and cached
+             (float-time (time-subtract (current-time) (car cached))) < org-roam-skill-cache-ttl)
+        (cdr cached)
+      nil)))
+
+defun org-roam-skill--cache-set (key value)
+  "Set a value in the cache with current timestamp."
+  (puthash key (cons (current-time) value) org-roam-skill-graph-stats-cache))
+
+defun org-roam-skill--cache-init ()
+  "Initialize the cache if it doesn't exist."
+  (unless org-roam-skill-graph-stats-cache
+    (setq org-roam-skill-graph-stats-cache (make-hash-table :test 'equal))))
+
 ;;;###autoload
 (defun org-roam-skill-check-setup ()
   "Check if org-roam is properly set up.
@@ -135,27 +160,32 @@ Return a list of (id title file) tuples for orphaned notes."
   "Get statistics about the org-roam graph.
 Return a plist with various statistics."
   (interactive)
-  (condition-case err
-      (let* ((nodes (org-roam-node-list))
-             (total-nodes (length nodes))
-             (total-links 0)
-             ;; Forward declare to avoid dependency on org-roam-skill-tags
-             (tags (sort
-                    (delete-dups
-                     (flatten-list
-                      (mapcar #'org-roam-node-tags nodes)))
-                    #'string<)))
-        (dolist (node nodes)
-          (setq total-links (+ total-links (length (org-roam-backlinks-get node)))))
-        (list :total-notes total-nodes
-              :total-links total-links
-              :unique-tags (length tags)
-              :average-links-per-note (if (> total-nodes 0)
-                                          (/ (float total-links) total-nodes)
-                                        0)))
-    (error
-     (message "Error getting graph stats: %s" (error-message-string err))
-     nil)))
+  (org-roam-skill--cache-init)
+  (let ((cache-key "graph-stats"))
+    (or (org-roam-skill--cache-get cache-key)
+        (condition-case err
+            (let* ((nodes (org-roam-node-list))
+                   (total-nodes (length nodes))
+                   (total-links 0)
+                   ;; Forward declare to avoid dependency on org-roam-skill-tags
+                   (tags (sort
+                          (delete-dups
+                           (flatten-list
+                            (mapcar #'org-roam-node-tags nodes)))
+                          #'string<)))
+              (dolist (node nodes)
+                (setq total-links (+ total-links (length (org-roam-backlinks-get node)))))
+              (let ((result (list :total-notes total-nodes
+                                 :total-links total-links
+                                 :unique-tags (length tags)
+                                 :average-links-per-note (if (> total-nodes 0)
+                                                             (/ (float total-links) total-nodes)
+                                                           0))))
+                (org-roam-skill--cache-set cache-key result)
+                result))
+          (error
+           (message "Error getting graph stats: %s" (error-message-string err))
+           nil)))))
 
 (defun org-roam-skill--format-buffer ()
   "Format the current org buffer, aligning tables and cleaning up structure.
