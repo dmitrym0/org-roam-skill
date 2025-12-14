@@ -12,6 +12,20 @@
 
 (require 'org-roam)
 
+;;; External Dependencies
+
+(declare-function org-roam-node-from-title-or-alias "org-roam" (title))
+(declare-function org-roam-node-from-id "org-roam" (id))
+(declare-function org-roam-node-title "org-roam" (node))
+(declare-function org-roam-node-file "org-roam" (node))
+(declare-function org-roam-node-tags "org-roam" (node))
+(declare-function org-roam-node-aliases "org-roam" (node))
+(declare-function org-roam-node-refs "org-roam" (node))
+(declare-function org-roam-node-level "org-roam" (node))
+(declare-function org-roam-backlinks-get "org-roam" (node))
+(declare-function org-roam-db-sync "org-roam" ())
+(declare-function org-id-uuid "org-id" ())
+
 (defun org-roam-skill--sanitize-tag (tag)
   "Sanitize TAG by replacing hyphens with underscores.
 Org tags cannot contain hyphens."
