@@ -1,18 +1,22 @@
 ---
-name: Org-roam Note Management
+name: Org-mode and Org-roam
 description: |
-  Helps users create, manage, and link org-roam notes using emacsclient to connect to a running Emacs daemon.
+  Comprehensive org-mode formatting and org-roam note management skill. Provides org-mode syntax knowledge for any .org file, plus roam-specific operations via emacsclient.
 
-  **ALWAYS USE THIS SKILL** when user mentions "roam note" or "org-roam", references file paths containing `/roam/` or `/org-roam/`, or wants to create/search/link notes in their roam directory.
+  **ALWAYS USE THIS SKILL** when user mentions "roam note", "org-roam", "org-mode", or references .org files—especially those in `/roam/` or `/org-roam/` directories.
 
-  Use this skill for: creating roam notes, searching notes, adding backlinks, querying org-roam database, managing Zettelkasten-style knowledge systems.
+  Use this skill for: (1) org-mode syntax and formatting guidance, (2) creating/searching/linking roam notes, (3) managing Zettelkasten-style knowledge systems.
 
-  **NEVER use Read/Write/Edit tools directly on roam notes** - they bypass database sync and break org-roam functionality.
+  **NEVER use Read/Write/Edit tools directly on roam notes** - they bypass database sync and break org-roam functionality. For general .org files outside roam directories, direct file tools are acceptable.
 ---
 
-# Org-roam Note Management
+# Org-mode and Org-roam Skill
 
-This skill helps manage org-roam notes by leveraging a running Emacs daemon and org-roam's built-in functions through emacsclient.
+This skill provides comprehensive org-mode knowledge and org-roam note management via emacsclient.
+
+**Two modes of operation:**
+1. **Org-mode formatting** — Reference docs for syntax, properties, timestamps, links (no emacsclient needed)
+2. **Org-roam operations** — Create, search, link notes via emacsclient to running Emacs daemon
 
 ## Critical: Don't Use Direct File Tools
 
@@ -296,7 +300,14 @@ Strip quotes from strings and parse structures as needed.
 
 ## Additional Resources
 
-**References:**
+**Org-mode Formatting (no emacsclient needed):**
+- **org-syntax.md** - Complete org-mode syntax reference
+- **properties.md** - Property drawers and node properties
+- **timestamps.md** - Date/time formats, scheduling, deadlines
+- **links.md** - Internal and external link syntax
+- **examples.md** - Common formatting patterns
+
+**Org-roam Operations (via emacsclient):**
 - **emacsclient-usage.md** - Detailed emacsclient patterns
 - **org-roam-api.md** - Org-roam API reference
 - **functions.md** - Complete function documentation
@@ -304,8 +315,9 @@ Strip quotes from strings and parse structures as needed.
 - **troubleshooting.md** - Common issues and solutions
 
 **Quick access patterns:**
+- Need org-mode syntax? → `references/org-syntax.md`
+- Working with timestamps? → `references/timestamps.md`
+- Creating links? → `references/links.md`
 - Need installation help? → `references/installation.md`
 - Function parameters unclear? → `references/functions.md`
 - Something not working? → `references/troubleshooting.md`
-- Need advanced emacsclient usage? → `references/emacsclient-usage.md`
-- Want org-roam API details? → `references/org-roam-api.md`
