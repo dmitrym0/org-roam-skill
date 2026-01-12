@@ -53,7 +53,7 @@ emacs --daemon
 
 1. Verify load-path is correct:
    ```bash
-   ls ${CLAUDE_PLUGIN_ROOT}/elisp/org-roam-skill.el
+   ls ${CLAUDE_PLUGIN_ROOT}/skills/roam/elisp/org-roam-skill.el
    ```
 
 2. Check Emacs configuration has correct path:
@@ -235,7 +235,7 @@ Use the `orgmode` skill for general org-mode formatting before creating roam not
 ```bash
 # Step 1: Convert markdown to org (orgmode skill)
 # Step 2: Create roam note with org content (this skill)
-${CLAUDE_PLUGIN_ROOT}/scripts/org-roam-eval \
+${CLAUDE_PLUGIN_ROOT}/skills/roam/scripts/org-roam-eval \
   "(org-roam-skill-create-note \"Title\" :content \"* Org content\")"
 ```
 

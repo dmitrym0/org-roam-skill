@@ -38,7 +38,7 @@ Package auto-loads on first use via `scripts/org-roam-eval` wrapper - no manual 
 
 **Usage pattern:**
 ```bash
-${CLAUDE_PLUGIN_ROOT}/scripts/org-roam-eval "(org-roam-skill-create-note \"Title\")"
+${CLAUDE_PLUGIN_ROOT}/skills/roam/scripts/org-roam-eval "(org-roam-skill-create-note \"Title\")"
 ```
 
 ## Key Implementation Details
