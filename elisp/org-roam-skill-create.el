@@ -41,7 +41,9 @@ cleanup in shell scripts.
 
 Return the file path of the created note."
   (let* ((file-name (org-roam-skill--expand-filename title))
-         (file-path (expand-file-name file-name org-roam-directory))
+         (subdir (expand-file-name "claude" org-roam-directory))
+         (_ (make-directory subdir t))  ; ensure subdirectory exists
+         (file-path (expand-file-name file-name subdir))
          (node-id (org-id-uuid))
          (head-content (org-roam-skill--get-head-content))
          ;; Read content from file if provided, otherwise use content parameter
@@ -54,25 +56,26 @@ Return the file path of the created note."
         (progn
           ;; Create the file with proper org-roam structure
           (with-temp-file file-path
-            ;; Insert PROPERTIES block with ID
+            ;; Insert PROPERTIES block with ID and CREATED_BY
             (insert ":PROPERTIES:\n")
             (insert (format ":ID:       %s\n" node-id))
+            (insert ":CREATED_BY: claude\n")
             (insert ":END:\n")
 
             ;; Insert head content if template specifies it
             (when (and head-content (not (string-empty-p head-content)))
               (let* ((expanded-head
-                      ;; First expand ${title}
-                      (replace-regexp-in-string "\\${title}" title head-content))
+                      ;; First expand ${title} with [claude] prefix
+                      (replace-regexp-in-string "\\${title}" (concat "[claude] " title) head-content))
                      ;; Then expand time format specifiers
                      (expanded-head (org-roam-skill--expand-time-formats expanded-head)))
                 (insert expanded-head)
                 (unless (string-suffix-p "\n" expanded-head)
                   (insert "\n"))))
 
-            ;; If head content doesn't include title, add it
+            ;; If head content doesn't include title, add it with [claude] prefix
             (unless (string-match-p "#\\+\\(?:title\\|TITLE\\):" (or head-content ""))
-              (insert (format "#+TITLE: %s\n" title)))
+              (insert (format "#+TITLE: [claude] %s\n" title)))
 
             ;; Insert filetags if provided (sanitize to remove hyphens)
             (when tags
